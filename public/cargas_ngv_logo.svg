@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Rich Cargas Official Green Gradient -->
+    <linearGradient id="cargasGreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#008a3e" />
+      <stop offset="60%" stop-color="#007a34" />
+      <stop offset="100%" stop-color="#006328" />
+    </linearGradient>
+
+    <!-- Flame Lime/Green Accent -->
+    <linearGradient id="flameGreenAccent" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#008a3e" />
+      <stop offset="100%" stop-color="#72b826" />
+    </linearGradient>
+
+    <!-- Flame Golden Yellow Core -->
+    <linearGradient id="flameYellowCore" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffcc00" />
+      <stop offset="50%" stop-color="#ffe600" />
+      <stop offset="100%" stop-color="#fff885" />
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow for NGV Text -->
+    <filter id="ngvShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#003816" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <g transform="translate(0, 5)">
+    <!-- 1. Main Green 3-Petal Lotus Leaf Emblem -->
+    <path d="M 250,30 
+             C 272,75 308,125 352,154 
+             C 404,188 460,202 470,240 
+             C 478,268 456,294 420,314 
+             C 376,338 316,346 250,346 
+             C 184,346 124,338 80,314 
+             C 44,294 22,268 30,240 
+             C 40,202 96,188 148,154 
+             C 192,125 228,75 250,30 Z" 
+          fill="url(#cargasGreenGrad)" 
+          stroke="#00521e" 
+          stroke-width="3" />
+
+    <!-- 2. Stylized Gas Flame in Center Petal -->
+    <!-- Left outer green flame ribbon -->
+    <path d="M 250,75 
+             C 264,115 278,150 270,174 
+             C 262,194 246,206 240,225 
+             C 235,240 242,254 250,260 
+             C 238,254 228,242 225,227 
+             C 220,207 232,192 238,175 
+             C 246,151 238,112 250,75 Z" 
+          fill="url(#flameGreenAccent)" />
+
+    <!-- Right & Core Yellow Gas Flame -->
+    <path d="M 250,78 
+             C 266,110 282,145 282,176 
+             C 282,208 265,232 248,245 
+             C 262,233 272,214 270,188 
+             C 268,162 256,134 250,78 Z" 
+          fill="url(#flameYellowCore)" />
+
+    <!-- Center Bright Flame Spark -->
+    <path d="M 248,130 
+             C 255,148 260,166 258,185 
+             C 255,197 248,206 245,214 
+             C 242,206 245,194 247,185 
+             C 250,173 247,155 248,130 Z" 
+          fill="#FFFFFF" 
+          opacity="0.85" />
+
+    <!-- 3. Arabic Typography "كارجاس" Inscribed Inside Lower Leaf -->
+    <text x="250" y="306" 
+          text-anchor="middle" 
+          font-family="'Cairo', 'Tahoma', 'Arial', sans-serif" 
+          font-size="58" 
+          font-weight="900" 
+          fill="#ffdf00"
+          stroke="#004d1a"
+          stroke-width="1.8"
+          letter-spacing="1">كارجاس</text>
+
+    <!-- 4. NGV Letters Below the Emblem (Bold, Italic, Yellow with Green Edge) -->
+    <g transform="translate(250, 442)" filter="url(#ngvShadow)">
+      <text x="0" y="0" 
+            text-anchor="middle" 
+            font-family="'Arial Black', 'Impact', sans-serif" 
+            font-size="118" 
+            font-weight="900" 
+            font-style="italic" 
+            fill="#ffdf00" 
+            stroke="#00521e" 
+            stroke-width="5" 
+            letter-spacing="6">NGV</text>
+    </g>
+  </g>
+</svg>

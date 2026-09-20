@@ -19,7 +19,7 @@ export interface DepartmentRoleSpec {
 export const DEPARTMENT_ROLE_SPECS: Record<DepartmentRole, DepartmentRoleSpec> = {
   admin: {
     role: 'admin',
-    allowedTabs: ['admin', 'departments', 'camera', 'sessions', 'map', 'feasibility', 'execution', 'calculator', 'guide'],
+    allowedTabs: ['portal', 'admin', 'departments', 'camera', 'sessions', 'map', 'feasibility', 'execution', 'calculator', 'guide'],
     primaryTab: 'admin',
     gmTitle: 'مدير عام إدارة النظام والتحكم (Super Admin)',
     theme: {

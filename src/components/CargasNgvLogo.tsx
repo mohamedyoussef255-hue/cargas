@@ -9,54 +9,37 @@ interface CargasNgvLogoProps {
   lightBackground?: boolean;
 }
 
+/**
+ * CargasNgvLogo Component
+ * The graphic logo has been removed per user instruction.
+ * If showText is enabled, it renders clean typographic brand text without any logo image.
+ */
 export const CargasNgvLogo: React.FC<CargasNgvLogoProps> = ({
   className = '',
   showText = false,
-  size = 'md',
   layout = 'horizontal',
   subtitle,
   lightBackground = false
 }) => {
-  const sizeClasses = {
-    xs: 'w-7 h-7',
-    sm: 'w-10 h-10',
-    md: 'w-14 h-14',
-    lg: 'w-20 h-20',
-    xl: 'w-28 h-28'
-  };
-
-  const textSizes = {
-    xs: { title: 'text-xs', ngv: 'text-xs', sub: 'text-[9px]' },
-    sm: { title: 'text-sm', ngv: 'text-xs', sub: 'text-[10px]' },
-    md: { title: 'text-base', ngv: 'text-sm', sub: 'text-[10px]' },
-    lg: { title: 'text-lg', ngv: 'text-base', sub: 'text-xs' },
-    xl: { title: 'text-2xl', ngv: 'text-xl', sub: 'text-sm' }
-  };
+  if (!showText) {
+    return null;
+  }
 
   const isVertical = layout === 'vertical';
 
   return (
     <div className={`inline-flex ${isVertical ? 'flex-col items-center text-center' : 'items-center text-right'} gap-2 ${className}`}>
-      <div className={`${sizeClasses[size]} shrink-0 relative flex items-center justify-center`}>
-        <img
-          src="/cargas_ngv_logo.svg"
-          alt="كارجاس NGV"
-          className="w-full h-full object-contain filter drop-shadow hover:scale-105 transition-transform duration-150"
-        />
-      </div>
-      {showText && (
-        <div className={`flex flex-col ${isVertical ? 'items-center' : 'items-start'}`}>
-          <div className="flex items-center gap-1 leading-tight font-black">
-            <span className={lightBackground ? 'text-slate-900' : 'text-white'}>كارجاس</span>
-            <span className="text-amber-400 font-mono">NGV</span>
-          </div>
-          {subtitle && (
-            <span className={`text-[11px] ${lightBackground ? 'text-slate-600' : 'text-slate-400'}`}>
-              {subtitle}
-            </span>
-          )}
+      <div className={`flex flex-col ${isVertical ? 'items-center' : 'items-start'}`}>
+        <div className="flex items-center gap-1.5 leading-tight font-black text-sm sm:text-base">
+          <span className={lightBackground ? 'text-slate-900' : 'text-white'}>كارجاس</span>
+          <span className="text-amber-400 font-mono font-bold text-xs bg-amber-400/10 px-1 py-0.5 rounded border border-amber-400/20">NGV</span>
         </div>
-      )}
+        {subtitle && (
+          <span className={`text-[11px] font-medium ${lightBackground ? 'text-slate-600' : 'text-slate-400'}`}>
+            {subtitle}
+          </span>
+        )}
+      </div>
     </div>
   );
 };

@@ -122,7 +122,7 @@ export const AdminPasswordsManager: React.FC = () => {
     const message = `السلام عليكم ورحمة الله،\n` +
       `السيد/ة ${spec.gmTitle} المحترم،\n\n` +
       `تحية طيبة وبعد،،،\n` +
-      `يسرنا تزويد سيادتكم ببيانات الدخول المعتمدة لصفحة بيئة عمل (${meta.title}) بمنظومة أدارة مشروعات ومحطات كارجاس:\n\n` +
+      `يسرنا تزويد سيادتكم ببيانات الدخول المعتمدة لصفحة بيئة عمل (${meta.title}) بمنظومة إدارة مشروعات ومحطات كارجاس:\n\n` +
       `• رابط الدخول المباشر لإدارتكم:\n${link}\n\n` +
       `• كلمة السر المعتمدة:\n${cred?.password}\n\n` +
       `عند الدخول ستتمكنون من توثيق ومتابعة المشروعات، رصد المعدات بالكاميرا، وإرسال روابط وتكليفات المهام لمهندسي إدارتكم عبر الواتساب.\n\n` +
@@ -182,7 +182,7 @@ export const AdminPasswordsManager: React.FC = () => {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             </div>
             <span className="text-[11px] text-slate-400 mt-1 block">
-              البريد الأساسي المطلوب: <code className="text-emerald-400">mohamedyoussef255@gmail.com</code>
+              البريد أو المعرف المعتمد لإدارة النظام
             </span>
           </div>
 
@@ -209,7 +209,7 @@ export const AdminPasswordsManager: React.FC = () => {
               </button>
             </div>
             <span className="text-[11px] text-slate-400 mt-1 block">
-              الافتراضي المطلوب: <code className="text-emerald-400">000000</code>
+              يمكنك تعيين كلمة سر جديدة وتحديثها في أي وقت
             </span>
           </div>
 

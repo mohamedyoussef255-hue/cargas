@@ -7,17 +7,17 @@ import {
 } from '../types';
 
 export const DEFAULT_SUPER_ADMIN: SuperAdminCredentials = {
-  email: 'mohamedyoussef255@gmail.com',
-  password: '000000',
+  email: 'admin@cargas.com.eg',
+  password: 'cargas@admin2026',
   lastUpdated: '2026-09-18T10:00:00.000Z'
 };
 
 export const INITIAL_DEPT_CREDENTIALS: Record<DepartmentRole, DepartmentAccessCredentials> = {
   admin: {
     department: 'admin',
-    password: '000000',
+    password: 'cargas@admin2026',
     gmTitle: 'مدير عام إدارة النظام والتحكم (Super Admin)',
-    defaultGmName: 'م. محمد يوسف',
+    defaultGmName: 'إدارة النظام والتحكم',
     defaultGmPhone: '+201019544000',
     lastUpdated: '2026-09-18T10:00:00.000Z'
   },

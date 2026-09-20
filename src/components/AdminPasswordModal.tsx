@@ -45,7 +45,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
       setErrorMessage(null);
       onSuccess();
     } else {
-      setErrorMessage('كلمة السر غير صحيحة! يرجى إدخال كلمة السر المعتمدة (الافتراضية: 000000).');
+      setErrorMessage('كلمة السر غير صحيحة! يرجى إدخال كلمة السر المعتمدة لمدير النظام.');
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 600);
     }
@@ -100,7 +100,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                   setPassword(e.target.value);
                   if (errorMessage) setErrorMessage(null);
                 }}
-                placeholder="أدخل كلمة السر (الافتراضية: 000000)"
+                placeholder="أدخل كلمة سر مدير النظام المعتمدة"
                 className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3 text-white text-sm tracking-wider focus:outline-none transition-colors"
                 autoComplete="current-password"
                 required
@@ -116,11 +116,11 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
               </button>
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
-              <span className="flex items-center gap-1 text-amber-400 font-mono">
+              <span className="flex items-center gap-1 text-emerald-400">
                 <KeyRound className="w-3.5 h-3.5" />
-                <span>كلمة السر الافتراضية: <strong>000000</strong></span>
+                <span>دخول محمي ومعتمد لمدير المنظومة</span>
               </span>
-              <span className="text-slate-400">يمكنك تغييرها لاحقاً من الإعدادات</span>
+              <span className="text-slate-400">تحكم وإدارة كاملة</span>
             </div>
           </div>
 

@@ -18,18 +18,19 @@ import {
 } from 'lucide-react';
 import { DepartmentRole } from '../types';
 import { DEPARTMENTS_METADATA } from '../data/departmentCustomFields';
-import { CargasNgvLogo } from './CargasNgvLogo';
 
 interface DepartmentPortalLandingProps {
   onSelectRole: (role: DepartmentRole) => void;
   onOpenAdminLogin: () => void;
   onOpenDeptLogin: (role: DepartmentRole) => void;
+  isAdminLoggedIn?: boolean;
 }
 
 export const DepartmentPortalLanding: React.FC<DepartmentPortalLandingProps> = ({
   onSelectRole,
   onOpenAdminLogin,
   onOpenDeptLogin,
+  isAdminLoggedIn = false,
 }) => {
   const [hoveredRole, setHoveredRole] = useState<DepartmentRole | null>(null);
 
@@ -83,15 +84,11 @@ export const DepartmentPortalLanding: React.FC<DepartmentPortalLandingProps> = (
                 <span>بوابة الدخول الموحدة لإدارات كارجاس • CARGAS NGV Unified Portal</span>
               </div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
-                منظومة أدارة مشروعات ومحطات كارجاس
+                منظومة إدارة مشروعات ومحطات كارجاس
               </h1>
               <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed">
                 بيئة عمل مؤمنة ومعزولة لكل إدارة، تظهر لكل مدير عام وفريق عمله المهام والتقارير المخصصة له فقط عبر كلمة سر معتمدة وموجهة بالواتساب، مع إدارة ورقابة مركزية شاملة تحت مظلة <span className="text-emerald-400 font-bold">إدارة النظام</span>.
               </p>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <CargasNgvLogo size="lg" showText={false} className="shadow-2xl" />
             </div>
           </div>
 
@@ -107,47 +104,49 @@ export const DepartmentPortalLanding: React.FC<DepartmentPortalLandingProps> = (
             </div>
             <div className="flex items-center gap-2">
               <Key className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span><strong>إدارة النظام:</strong> مقتصرة على البريد المعتمد وكلمة السر المركزية</span>
+              <span><strong>إدارة النظام:</strong> لوحة تحكم مركزية شاملة مؤمنة لإدارة الإدارات وكلمات السر والنماذج</span>
             </div>
           </div>
         </div>
 
-        {/* 1. Super Admin Featured Access Card */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border-2 border-emerald-500/40 p-6 sm:p-7 shadow-xl hover:border-emerald-400 transition-all group">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-lg group-hover:scale-105 transition-transform">
-                <ShieldCheck className="w-8 h-8" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    التحكم المركزي الشامل
-                  </span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    SUPER ADMIN ACCESS
-                  </span>
+        {/* 1. Super Admin Card - ONLY visible if already logged in as Admin */}
+        {isAdminLoggedIn && (
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border-2 border-emerald-500/40 p-6 sm:p-7 shadow-xl hover:border-emerald-400 transition-all group">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-lg group-hover:scale-105 transition-transform">
+                  <ShieldCheck className="w-8 h-8" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-black text-white">
-                  إدارة النظام والتحكم الشامل
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
-                  الدخول مقصور على البريد الإلكتروني <strong className="text-emerald-400 font-mono">mohamedyoussef255@gmail.com</strong> وبكلمة السر المعتمدة (<strong className="text-emerald-400 font-mono">000000</strong>)، مع إمكانية تعديل كلمة السر وإدارة كلمات سر كافة الإدارات.
-                </p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      جلسة نشطة ومسجلة
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">
+                      SUPER ADMIN
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-black text-white">
+                    لوحة تحكم إدارة النظام والتحكم الشامل
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+                    أنت مسجل كمدير النظام. يمكنك العودة مباشرة إلى لوحة التحكم المركزية ومتابعة تقارير الإدارات والمشاريع.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <button
-              id="btn-admin-portal-login"
-              onClick={onOpenAdminLogin}
-              className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-xl shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
-            >
-              <Lock className="w-4 h-4" />
-              <span>دخول إدارة النظام والتحكم الشامل</span>
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+              <button
+                id="btn-admin-portal-login"
+                onClick={onOpenAdminLogin}
+                className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-xl shadow-emerald-600/30 transition-all cursor-pointer shrink-0"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-200" />
+                <span>العودة للوحة تحكم إدارة النظام</span>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 2. Departments Grid (8 Departments) */}
         <div className="space-y-4">
@@ -230,6 +229,24 @@ export const DepartmentPortalLanding: React.FC<DepartmentPortalLandingProps> = (
               );
             })}
           </div>
+        </div>
+
+        {/* Subtle Portal Footer with Discreet Admin Access */}
+        <div className="pt-6 mt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span>شركة الغاز الطبيعي للسيارات (كارجاس) • قطاع المشروعات والتنفيذ والأمن الصناعي • الخط الساخن: 19544</span>
+          </div>
+          {!isAdminLoggedIn && (
+            <button
+              id="btn-discrete-admin-login"
+              onClick={onOpenAdminLogin}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-slate-600 hover:text-slate-400 hover:bg-slate-800/50 transition-colors cursor-pointer text-[11px]"
+              title="دخول المشرف الإداري"
+            >
+              <Lock className="w-3 h-3" />
+              <span>الدخول الإداري المركزي</span>
+            </button>
+          )}
         </div>
 
       </div>

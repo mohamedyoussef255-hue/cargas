@@ -33,7 +33,8 @@ import {
   FileText,
   UploadCloud,
   Camera,
-  Share2
+  Share2,
+  Home
 } from 'lucide-react';
 import {
   PlatformMasterSettings,
@@ -48,7 +49,8 @@ import {
   VEHICLE_TYPES,
   CustomFormField,
   FormChangeRequest,
-  DepartmentRole
+  DepartmentRole,
+  CNGStation
 } from '../types';
 import { CargasNgvLogo } from './CargasNgvLogo';
 import { DEFAULT_FUEL_PRICING, DEFAULT_FEASIBILITY_SETTINGS } from '../data/defaultSettings';
@@ -61,7 +63,9 @@ import { AdminInvitationsManager } from './AdminInvitationsManager';
 import { AdminPasswordsManager } from './AdminPasswordsManager';
 import { AdminActivityLogsManager } from './AdminActivityLogsManager';
 import { VideoArchiveModal } from './VideoArchiveModal';
-import { Key, Film, History } from 'lucide-react';
+import { AdminProjectExecutionDashboard } from './AdminProjectExecutionDashboard';
+import { AdminProductionDataEditor } from './AdminProductionDataEditor';
+import { Key, Film, History, LayoutDashboard } from 'lucide-react';
 
 interface AdminControlPanelProps {
   settings: PlatformMasterSettings;
@@ -73,12 +77,16 @@ interface AdminControlPanelProps {
   onClearSessions?: () => void;
   onRestoreDefaultSessions?: () => void;
   onImportSessions?: (newSessions: MonitoringSession[]) => void;
+  stations?: CNGStation[];
+  onUpdateStations?: (stations: CNGStation[]) => void;
+  onBack?: () => void;
   customFields?: CustomFormField[];
   onUpdateFields?: (fields: CustomFormField[]) => void;
   changeRequests?: FormChangeRequest[];
   onUpdateChangeRequests?: (requests: FormChangeRequest[]) => void;
   onPreviewDepartment?: (dept: DepartmentRole) => void;
-  initialTab?: 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive';
+  onNavigateToPortal?: () => void;
+  initialTab?: 'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive';
   selectedFormBuilderDept?: DepartmentRole;
 }
 
@@ -92,16 +100,20 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
   onClearSessions,
   onRestoreDefaultSessions,
   onImportSessions,
+  stations = [],
+  onUpdateStations = () => {},
+  onBack,
   customFields = [],
   onUpdateFields = () => {},
   changeRequests = [],
   onUpdateChangeRequests = () => {},
   onPreviewDepartment,
-  initialTab = 'pricing',
+  onNavigateToPortal,
+  initialTab = 'dashboard',
   selectedFormBuilderDept,
 }) => {
   // Active Panel Tab
-  const [activeTab, setActiveTab] = useState<'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive'>(initialTab);
   const [currentFormBuilderDept, setCurrentFormBuilderDept] = useState<DepartmentRole>(selectedFormBuilderDept || 'operations');
 
   // Local draft states for easy editing and saving
@@ -541,20 +553,48 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs bg-slate-900/90 p-2.5 rounded-xl border border-slate-700">
-            <div className="text-right">
-              <span className="text-slate-400 block text-[11px]">سعر الغاز الحالي المعتمد:</span>
-              <strong className="text-emerald-400 font-mono text-base font-black">
-                {settings.pricing.cngPrice.toFixed(2)} ج.م/م³
-              </strong>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 text-xs bg-slate-900/90 p-2.5 rounded-xl border border-slate-700">
+              <div className="text-right">
+                <span className="text-slate-400 block text-[11px]">سعر الغاز الحالي المعتمد:</span>
+                <strong className="text-emerald-400 font-mono text-base font-black">
+                  {settings.pricing.cngPrice.toFixed(2)} ج.م/م³
+                </strong>
+              </div>
+              <span className="h-7 w-px bg-slate-800 mx-1"></span>
+              <div className="text-right">
+                <span className="text-slate-400 block text-[11px]">عدد مواقع المعاينة:</span>
+                <strong className="text-amber-400 font-mono text-base font-black">
+                  {sessions.length} موقع
+                </strong>
+              </div>
             </div>
-            <span className="h-7 w-px bg-slate-800 mx-1"></span>
-            <div className="text-right">
-              <span className="text-slate-400 block text-[11px]">عدد مواقع المعاينة:</span>
-              <strong className="text-amber-400 font-mono text-base font-black">
-                {sessions.length} موقع
-              </strong>
-            </div>
+
+            {(onBack || onNavigateToPortal) && (
+              <button
+                id="btn-admin-go-back"
+                type="button"
+                onClick={onBack || onNavigateToPortal}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs shadow transition-all cursor-pointer"
+                title="تراجع / العودة للشاشة السابقة"
+              >
+                <RotateCcw className="w-4 h-4 text-amber-400" />
+                <span>تراجع / رجوع</span>
+              </button>
+            )}
+
+            {onNavigateToPortal && (
+              <button
+                id="btn-admin-go-home"
+                type="button"
+                onClick={onNavigateToPortal}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all cursor-pointer"
+                title="الرجوع إلى الصفحة الرئيسية وبوابة الإدارات بدون تسجيل خروج"
+              >
+                <Home className="w-4 h-4" />
+                <span>الصفحة الرئيسية (بوابة الإدارات)</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -569,6 +609,23 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
         {/* Tab Navigation Navigation Bar */}
         <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-slate-700/80">
           
+          {/* PMO Projects & Department Completion Dashboard */}
+          <button
+            id="tab-pmo-dashboard"
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'dashboard'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40'
+                : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4 text-blue-400" />
+            <span>لوحة مؤشرات إنجاز الإدارات والمشاريع (PMO)</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+              رسوم بيانية حية
+            </span>
+          </button>
+
           {/* Central Passwords & Direct Auth Tab */}
           <button
             id="tab-passwords"
@@ -581,8 +638,8 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
           >
             <Key className="w-4 h-4 text-emerald-400" />
             <span>كلمات سر الإدارات ومدير النظام</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono font-bold">
-              000000
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+              إدارة وتحكم
             </span>
           </button>
 
@@ -766,6 +823,13 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ============================================================== */}
+      {/* TAB: PMO PROJECTS EXECUTION DASHBOARD (RECHARTS VISUALIZATION) */}
+      {/* ============================================================== */}
+      {activeTab === 'dashboard' && (
+        <AdminProjectExecutionDashboard onPreviewDepartment={onPreviewDepartment} />
+      )}
 
       {/* ============================================================== */}
       {/* TAB: PASSWORDS & ACCESS CONTROL (SUPER ADMIN & DEPARTMENTS)   */}
@@ -1509,189 +1573,19 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
       {/* TAB 6: DATA MANAGEMENT, CLEARING TEST DATA & SYSTEM UPDATES   */}
       {/* ============================================================== */}
       {activeTab === 'datamgmt' && (
-        <div className="space-y-6">
-          <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-6">
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-700">
-              <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-rose-400" />
-                  <span>إدارة وتفريغ البيانات التجريبية وتحديث المنظومة</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  أدوات المدير للتحكم في قواعد البيانات المحلية، تفريغ جلسات المعاينة الافتراضية، واستعادة نماذج الاختبار، وتعديل وتحديث بيانات المواقع.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleRestoreSampleData}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-semibold text-xs cursor-pointer transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                  <span>استعادة البيانات النموذجية</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowClearConfirmModal(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm cursor-pointer transition-all shadow-lg shadow-rose-600/30"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>تفريغ التطبيق من كافة البيانات التجريبية</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Status Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block mb-1">جلسات الرصد المسجلة:</span>
-                  <strong className="text-xl font-mono font-bold text-white">{sessions.length} جلسة</strong>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-800 text-slate-400">
-                  <Car className="w-5 h-5" />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block mb-1">مراكز كارجاس بالدليل:</span>
-                  <strong className="text-xl font-mono font-bold text-emerald-400">{centersList.length} مركز</strong>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-800 text-emerald-400">
-                  <Building2 className="w-5 h-5" />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block mb-1">حالة التخزين المحلي:</span>
-                  <strong className="text-xs font-mono font-bold text-emerald-400">نشط (cng_platform_sessions_v1)</strong>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-800 text-cyan-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
-
-            {/* Explanatory Banner */}
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200">
-              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="font-bold block mb-0.5">تعليمات تفريغ البيانات والبدء الميداني:</strong>
-                <p className="leading-relaxed text-slate-300">
-                  عند الضغط على زر "تفريغ التطبيق من البيانات التجريبية"، سيتم مسح كافة المواقع الاختبارية (الرصد، العدادات، والتقارير المحفوظة)، مما يتيح لك بدء استخدام التطبيق ميدانياً وتسجيل المواقع الفعلية من خلال الكاميرا والرصد اليدوي. في حال رغبتك بالرجوع للاختبار، يمكنك دائماً الضغط على "استعادة البيانات النموذجية".
-                </p>
-              </div>
-            </div>
-
-            {/* Interactive Sessions Management List */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Edit2 className="w-4 h-4 text-amber-400" />
-                  <span>تعديل وحذف جلسات الرصد والمواقع الحالية:</span>
-                </h4>
-                <span className="text-xs text-slate-400">
-                  {sessions.length > 0 ? `إجمالي (${sessions.length}) موقع مسجل` : 'لا توجد بيانات حالياً (التطبيق فارغ)'}
-                </span>
-              </div>
-
-              {sessions.length === 0 ? (
-                <div className="p-8 rounded-xl bg-slate-900/60 border border-dashed border-slate-700 text-center space-y-3">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-                  <h5 className="text-base font-bold text-white">التطبيق فارغ وجاهز لتسجيل البيانات الفعلية</h5>
-                  <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    تم تفريغ جميع البيانات التجريبية بنجاح. يمكنك الآن بدء جلسات رصد جديدة من شاشة "رصد الكاميرا الذكية" أو استعادة العينات التجريبية للاختبار.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleRestoreSampleData}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer transition-colors inline-flex items-center gap-1.5"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                    <span>استعادة البيانات النموذجية للاختبار</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {sessions.map((s) => (
-                    <div
-                      key={s.id}
-                      className="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold">
-                                {s.code}
-                              </span>
-                              <h5 className="text-sm font-bold text-white">{s.title}</h5>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                              <span>{s.locationName} ({s.governorate} - {s.city})</span>
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setEditingSession({ ...s })}
-                              title="تعديل بيانات الموقع والمركبات كمدير"
-                              className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 cursor-pointer transition-colors"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSingleSession(s.id, s.title)}
-                              title="حذف هذه الجلسة"
-                              className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 cursor-pointer transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Counts Badge breakdown */}
-                        <div className="flex flex-wrap gap-1 mt-3 font-mono text-[11px]">
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                            🚐 ميكروباص: <strong className="text-emerald-400">{s.counts.microbus}</strong>
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                            🚕 تاكسي: <strong className="text-yellow-400">{s.counts.taxi}</strong>
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                            🚙 فان: <strong className="text-purple-400">{s.counts.suzuki_van}</strong>
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                            🚘 بيجو: <strong className="text-rose-400">{s.counts.peugeot_station}</strong>
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                            🚗 ملاكي: <strong className="text-blue-400">{s.counts.private}</strong>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-400 pt-3 mt-3 border-t border-slate-800">
-                        <span>القائم بالمعاينة: <strong className="text-slate-200">{s.surveyorName || 'غير محدد'}</strong></span>
-                        <span className="font-mono text-cyan-400 font-bold">
-                          {Object.values(s.counts).reduce((a, b) => a + b, 0)} مركبة إجمالاً
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>
+        <AdminProductionDataEditor
+          stations={stations}
+          onUpdateStations={onUpdateStations}
+          sessions={sessions}
+          onUpdateSessions={(updatedSessions) => {
+            if (onImportSessions) {
+              onImportSessions(updatedSessions);
+            } else if (onUpdateSession && updatedSessions.length > 0) {
+              updatedSessions.forEach(s => onUpdateSession(s));
+            }
+          }}
+          onBack={onBack || onNavigateToPortal}
+        />
       )}
 
       {/* ============================================================== */}

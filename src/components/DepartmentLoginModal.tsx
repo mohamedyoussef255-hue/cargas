@@ -203,7 +203,7 @@ export const DepartmentLoginModal: React.FC<DepartmentLoginModalProps> = ({
       {/* Footer Info */}
       <div className="mt-6 pt-4 border-t border-slate-800 text-center space-y-1">
         <p className="text-xs text-slate-400">
-          منظومة أدارة مشروعات ومحطات كارجاس للغاز الطبيعي
+          منظومة إدارة مشروعات ومحطات كارجاس للغاز الطبيعي
         </p>
         <p className="text-[11px] text-slate-400">
           إذا لم تستلم كلمة السر بعد، يرجى التواصل مع مدير النظام المركزي

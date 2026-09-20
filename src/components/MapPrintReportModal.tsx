@@ -1,5 +1,19 @@
 import React from 'react';
-import { Printer, X, MapPin, Compass, Building2, Car, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { 
+  Printer, 
+  X, 
+  MapPin, 
+  Compass, 
+  Building2, 
+  Car, 
+  ShieldAlert, 
+  CheckCircle2, 
+  Share2, 
+  RotateCcw, 
+  Download, 
+  Image as ImageIcon,
+  ExternalLink 
+} from 'lucide-react';
 import { CNGStation, MonitoringSession } from '../types';
 import { BRANDS_INFO, BrandType } from './CompanyBrandBadges';
 
@@ -29,6 +43,104 @@ export const MapPrintReportModal: React.FC<MapPrintReportModalProps> = ({
     window.print();
   };
 
+  const stationName = selectedStation?.name || selectedSession?.title || 'موقع دراسة ميدانية لمحطة كارجاس NGV';
+  const gov = selectedStation?.governorate || selectedSession?.governorate || 'الجيزة / القاهرة';
+  const lat = selectedStation?.lat || selectedSession?.coordinates?.lat || 29.9880;
+  const lng = selectedStation?.lng || selectedSession?.coordinates?.lng || 31.1350;
+
+  const handleShareWhatsApp = () => {
+    const competitorsText = nearbyCompetitors.slice(0, 4).map((c, i) => 
+      `   ${i + 1}. *${c.station.name}* (${c.station.company}) - على بُعد ${c.distanceKm} كم`
+    ).join('\n');
+
+    const text = `*تقرير الخريطة والموقع الجغرافي المعتمد • شركة كارجاس NGV*
+📍 *الموقع:* ${stationName}
+🗺️ *المحافظة:* ${gov}
+🛰️ *إحداثيات GPS الدقيقة:* ${lat.toFixed(5)}, ${lng.toFixed(5)}
+🔗 *رابط الموقع المباشر في خرائط جوجل:*
+https://www.google.com/maps?q=${lat},${lng}
+
+🏢 *نمط الخريطة:* ${mapTileMode === 'satellite' ? 'صور الأقمار الصناعية (Satellite)' : 'خريطة الطرق والمحاور (Streets)'}
+
+⛽ *المحطات المنافسة القريبة:*
+${competitorsText || '   لا توجد محطات منافسة في النطاق المباشر (فرصة انتشار ممتازة)'}
+
+مستخرج ومعتمد عبر منظومة كارجاس الرقمية لإدارة المشروعات.`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  // Generate PNG Snapshot
+  const handleExportImage = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 700;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Dark background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 1200, 700);
+
+    // Header bar
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 1200, 100);
+
+    // Title text
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 28px Cairo, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('شركة الغاز الطبيعي للسيارات (كارجاس) • CARGAS NGV', 1160, 48);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '16px Cairo, sans-serif';
+    ctx.fillText('تقرير الرصد الجغرافي وخريطة المحطات المنافسة', 1160, 80);
+
+    // Location Card
+    ctx.fillStyle = '#1e293b';
+    ctx.roundRect ? ctx.roundRect(40, 130, 1120, 200, 16) : ctx.fillRect(40, 130, 1120, 200);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Cairo, sans-serif';
+    ctx.fillText(stationName, 1120, 180);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '18px Cairo, sans-serif';
+    ctx.fillText(`المحافظة: ${gov} | الإحداثيات: ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 1120, 220);
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '16px Cairo, sans-serif';
+    ctx.fillText(`نمط الخريطة: ${mapTileMode === 'satellite' ? 'أقمار صناعية' : 'شبكة طرق'} | رابط Google Maps المباشر متاح بالتقرير`, 1120, 260);
+
+    // Nearby competitors box
+    ctx.fillStyle = '#1e293b';
+    ctx.roundRect ? ctx.roundRect(40, 360, 1120, 240, 16) : ctx.fillRect(40, 360, 1120, 240);
+    ctx.fill();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 20px Cairo, sans-serif';
+    ctx.fillText('المحطات المنافسة القريبة في النطاق:', 1120, 410);
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '16px Cairo, sans-serif';
+    nearbyCompetitors.slice(0, 4).forEach((comp, idx) => {
+      ctx.fillText(`${idx + 1}. ${comp.station.name} (${comp.station.company}) - على بُعد ${comp.distanceKm} كم`, 1120, 455 + (idx * 35));
+    });
+
+    // Footer
+    ctx.fillStyle = '#64748b';
+    ctx.font = '14px Cairo, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`تم التصدير في: ${new Date().toLocaleString('ar-EG')} • منظومة كارجاس الرقمية`, 600, 660);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = `cargas_map_snapshot_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
   const currentDate = new Date().toLocaleDateString('ar-EG', {
     weekday: 'long',
     year: 'numeric',
@@ -41,30 +153,54 @@ export const MapPrintReportModal: React.FC<MapPrintReportModalProps> = ({
     minute: '2-digit'
   });
 
-  const stationName = selectedStation?.name || selectedSession?.title || 'موقع دراسة ميدانية لمحطة كارجاس NGV';
-  const gov = selectedStation?.governorate || selectedSession?.governorate || 'الجيزة / القاهرة';
-  const lat = selectedStation?.lat || selectedSession?.coordinates?.lat || 29.9880;
-  const lng = selectedStation?.lng || selectedSession?.coordinates?.lng || 31.1350;
-
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto print:p-0 print:bg-white print:static">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full text-slate-100 overflow-hidden print:border-none print:shadow-none print:bg-white print:text-black print:max-w-none">
         
         {/* Top Modal Controls (hidden on print) */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60 print:hidden">
+        <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60 gap-3 print:hidden">
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-emerald-400" />
             <span className="font-bold text-base text-white">معاينة وطباعة تقرير الخريطة والموقع الجغرافي</span>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              id="btn-map-back"
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer shadow"
+              title="تراجع والعودة إلى شاشة الخريطة"
+            >
+              <RotateCcw className="w-4 h-4 text-amber-400" />
+              <span>تراجع / عودة للخريطة</span>
+            </button>
+
+            <button
+              onClick={handleShareWhatsApp}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>إرسال بالواتساب</span>
+            </button>
+
+            <button
+              onClick={handleExportImage}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition-all cursor-pointer"
+              title="تحميل كصورة أو لقطة شاشة"
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span>تصدير كصورة</span>
+            </button>
+
             <button
               id="btn-trigger-print"
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>طباعة التقرير (A4 / PDF)</span>
+              <span>طباعة (PDF)</span>
             </button>
+
             <button
               onClick={onClose}
               className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
@@ -266,6 +402,37 @@ export const MapPrintReportModal: React.FC<MapPrintReportModalProps> = ({
               <p className="font-bold text-white print:text-black mb-8">مدير عام المشروعات والشئون الفنية</p>
               <div className="border-b border-dotted border-slate-600 print:border-gray-400 w-32 mx-auto"></div>
               <p className="mt-1 text-[10px]">التوقيع: .....................</p>
+            </div>
+          </div>
+
+          {/* Bottom Action Bar for Quick Exit & Sharing */}
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700 shadow-xl flex flex-wrap items-center justify-between gap-3 print:hidden">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 text-xs font-bold transition-all cursor-pointer shadow"
+            >
+              <RotateCcw className="w-4 h-4 text-amber-400" />
+              <span>تراجع والعودة إلى الخريطة</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-emerald-600/30"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>إرسال بالواتساب مع رابط الخريطة</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-blue-600/30"
+              >
+                <Printer className="w-4 h-4" />
+                <span>طباعة التقرير (A4 / PDF)</span>
+              </button>
             </div>
           </div>
 

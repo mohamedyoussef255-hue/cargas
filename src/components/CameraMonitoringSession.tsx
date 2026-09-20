@@ -32,6 +32,8 @@ import { CargasNgvLogo } from './CargasNgvLogo';
 
 interface CameraMonitoringSessionProps {
   session: MonitoringSession | null;
+  allSessions?: MonitoringSession[];
+  onSelectOtherSession?: (session: MonitoringSession) => void;
   onUpdateSession: (updatedSession: MonitoringSession) => void;
   onCompleteSession: (completedSession: MonitoringSession) => void;
   onStartNewSession: () => void;
@@ -40,6 +42,8 @@ interface CameraMonitoringSessionProps {
 
 export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = ({
   session,
+  allSessions = [],
+  onSelectOtherSession,
   onUpdateSession,
   onCompleteSession,
   onStartNewSession,
@@ -55,6 +59,11 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+
+  // New Camera Lifecycle & Session Switching States
+  const [isCameraPaused, setIsCameraPaused] = useState<boolean>(false);
+  const [showSwitchSessionModal, setShowSwitchSessionModal] = useState<boolean>(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
 
   // AI Automatic Recognition States
   const [isAiScanning, setIsAiScanning] = useState<boolean>(true);
@@ -431,6 +440,57 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
     ? Math.round((totalVehicles / elapsedSeconds) * 3600) 
     : totalVehicles;
 
+  // Toggle Camera Video Track (Pause/Resume camera sensor without stopping session)
+  const toggleCameraFeed = () => {
+    if (stream) {
+      const videoTracks = stream.getVideoTracks();
+      const nextPaused = !isCameraPaused;
+      videoTracks.forEach(track => {
+        track.enabled = !nextPaused;
+      });
+      setIsCameraPaused(nextPaused);
+      setSaveToast(nextPaused ? "تم إيقاف تشغيل عدسة الكاميرا مؤقتاً لحفظ الشحن." : "تم استئناف تشغيل الكاميرا.");
+      setTimeout(() => setSaveToast(null), 3000);
+    }
+  };
+
+  // Permanently close camera and save session data
+  const handleStopCameraAndSave = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    if (session) {
+      const updated: MonitoringSession = {
+        ...session,
+        status: 'completed',
+        endTime: new Date().toISOString(),
+        durationSeconds: elapsedSeconds,
+      };
+      onCompleteSession(updated);
+      setSaveToast("تم إغلاق الكاميرا نهائياً وحفظ الجلسة بنجاح!");
+      setTimeout(() => setSaveToast(null), 3500);
+    }
+  };
+
+  // Switch to another monitoring session
+  const handleSwitchSession = (targetSession: MonitoringSession) => {
+    if (session) {
+      onUpdateSession({
+        ...session,
+        durationSeconds: elapsedSeconds,
+      });
+    }
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowSwitchSessionModal(false);
+    if (onSelectOtherSession) {
+      onSelectOtherSession(targetSession);
+    }
+  };
+
   if (!session) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
@@ -513,7 +573,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
         </div>
 
         {/* Live Counters and Control buttons */}
-        <div className="flex items-center gap-2 sm:gap-3 mr-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mr-auto">
           {/* Duration Clock */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-200">
             <Clock className="w-4 h-4 text-amber-400" />
@@ -531,7 +591,23 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
             {isSoundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
           </button>
 
-          {/* Pause / Resume */}
+          {/* Camera Feed Toggle (Pause/Resume camera sensor without ending session) */}
+          <button
+            id="btn-toggle-camera-feed"
+            type="button"
+            onClick={toggleCameraFeed}
+            title={isCameraPaused ? "استئناف تشغيل عدسة الكاميرا" : "إيقاف مؤقت لعدسة الكاميرا لحفظ شحن البطارية"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              isCameraPaused
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+            }`}
+          >
+            {isCameraPaused ? <Camera className="w-4 h-4 text-amber-400" /> : <CameraOff className="w-4 h-4 text-slate-400" />}
+            <span>{isCameraPaused ? 'استئناف الكاميرا' : 'إيقاف الكاميرا مؤقتاً'}</span>
+          </button>
+
+          {/* Pause / Resume Session Counting */}
           <button
             id="btn-pause-resume"
             onClick={() => {
@@ -541,7 +617,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
                 durationSeconds: elapsedSeconds,
               });
             }}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
               session.status === 'active'
                 ? 'bg-amber-500/10 text-amber-300 border-amber-500/40 hover:bg-amber-500/20'
                 : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
@@ -550,44 +626,58 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
             {session.status === 'active' ? (
               <>
                 <Pause className="w-4 h-4" />
-                <span>إيقاف مؤقت</span>
+                <span>إيقاف العد</span>
               </>
             ) : (
               <>
                 <Play className="w-4 h-4" />
-                <span>استئناف</span>
+                <span>استئناف العد</span>
               </>
             )}
           </button>
 
-          {/* Complete Session */}
+          {/* Complete & Save Session Permanently */}
           <button
             id="btn-complete-session"
-            onClick={() => {
-              onCompleteSession({
-                ...session,
-                status: 'completed',
-                endTime: new Date().toISOString(),
-                durationSeconds: elapsedSeconds,
-              });
-            }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            onClick={handleStopCameraAndSave}
+            title="إغلاق الكاميرا نهائياً وحفظ بيانات الجلسة"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>إنهاء وحفظ الجلسة</span>
+            <span>إغلاق الكاميرا وحفظ الجلسة</span>
+          </button>
+
+          {/* Switch to Another Session */}
+          <button
+            id="btn-switch-session"
+            type="button"
+            onClick={() => setShowSwitchSessionModal(true)}
+            title="الخروج من جلسة الرصد الحالية واختيار أو بدء جلسة أخرى"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-bold transition-all cursor-pointer"
+          >
+            <Radio className="w-4 h-4 text-blue-400" />
+            <span>جلسات الرصد الأخرى</span>
           </button>
 
           {/* Cancel Session */}
           <button
             id="btn-cancel-session"
             onClick={() => setShowCancelConfirm(true)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-semibold transition-all cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-semibold transition-all cursor-pointer"
           >
             <XCircle className="w-4 h-4 text-rose-400" />
-            <span>إلغاء الجلسة</span>
+            <span>إلغاء</span>
           </button>
         </div>
       </div>
+
+      {/* Save Notification Toast */}
+      {saveToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-5 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-bold animate-bounce">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{saveToast}</span>
+        </div>
+      )}
 
       {/* Cancel Confirmation Modal */}
       {showCancelConfirm && (
@@ -681,6 +771,121 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
         </div>
       </div>
 
+      {/* Switch Session Modal */}
+      {showSwitchSessionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center">
+                  <Radio className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">الانتقال إلى جلسة رصد أخرى</h4>
+                  <p className="text-[11px] text-slate-400">اختر موقعاً أو ابدأ جلسة رصد جديدة لموقع آخر</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSwitchSessionModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List of Available Sessions */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 no-scrollbar min-h-[220px]">
+              {allSessions.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500">
+                  لا توجد جلسات رصد أخرى محفوظة في المنظومة حالياً.
+                </div>
+              ) : (
+                allSessions.map((s) => {
+                  const isCurrent = s.id === session.id;
+                  const totalV = Object.values(s.counts).reduce((a, b) => a + b, 0);
+                  return (
+                    <div
+                      key={s.id}
+                      className={`p-3 rounded-xl border transition-all ${
+                        isCurrent
+                          ? 'bg-blue-950/40 border-blue-500/50'
+                          : 'bg-slate-800/60 border-slate-700 hover:border-slate-600 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold">
+                              {s.code}
+                            </span>
+                            <span className="font-bold text-xs text-white">{s.title}</span>
+                            {isCurrent && (
+                              <span className="px-1.5 py-0.2 rounded bg-blue-500/30 text-blue-300 text-[10px] font-semibold">
+                                الجلسة الحالية
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-rose-400" />
+                            <span>{s.locationName} ({s.governorate})</span>
+                            <span className="mx-1">•</span>
+                            <span className="font-mono text-cyan-400 font-bold">{totalV} مركبة</span>
+                          </p>
+                        </div>
+
+                        {!isCurrent && (
+                          <button
+                            type="button"
+                            onClick={() => handleSwitchSession(s)}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-sm"
+                          >
+                            اختيار وبدء الرصد
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  if (session) {
+                    onUpdateSession({
+                      ...session,
+                      durationSeconds: elapsedSeconds,
+                    });
+                  }
+                  if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                    setStream(null);
+                  }
+                  setShowSwitchSessionModal(false);
+                  onStartNewSession();
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-emerald-600/20"
+              >
+                <Plus className="w-4 h-4" />
+                <span>بدء جلسة رصد جديدة كلياً</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowSwitchSessionModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                الاستمرار في الجلسة الحالية
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid: Camera Stream & Quick Tally Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
@@ -696,6 +901,39 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
               muted
               className="w-full h-full object-cover"
             />
+
+            {/* If camera is temporarily paused */}
+            {isCameraPaused && (
+              <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-20 space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center">
+                  <CameraOff className="w-7 h-7" />
+                </div>
+                <div>
+                  <h4 className="text-white font-bold text-base">الكاميرا متوقفة مؤقتاً</h4>
+                  <p className="text-slate-300 text-xs max-w-xs mt-1">
+                    تم إيقاف عدسة الكاميرا مؤقتاً لتوفير شحن البطارية وحرارة الجهاز، مع استمرار حفظ بيانات الرصد والوقت الجاري.
+                  </p>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={toggleCameraFeed}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>استئناف تشغيل الكاميرا</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStopCameraAndSave}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>حفظ وإنهاء الجلسة</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* If camera error or inactive */}
             {cameraError && (

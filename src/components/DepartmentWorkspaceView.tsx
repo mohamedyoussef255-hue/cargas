@@ -30,7 +30,11 @@ import {
   Camera,
   Film,
   History,
-  Calendar
+  Calendar,
+  Award,
+  LogOut,
+  Bell,
+  BookOpen
 } from 'lucide-react';
 import { 
   DepartmentRole, 
@@ -45,6 +49,12 @@ import { MarketingSurveyDispatcherModal } from './MarketingSurveyDispatcherModal
 import { DepartmentTeamInviteModal } from './DepartmentTeamInviteModal';
 import { DepartmentDedicatedCameraModal } from './DepartmentDedicatedCameraModal';
 import { VideoArchiveModal } from './VideoArchiveModal';
+import { DepartmentPeriodicTasksScheduler } from './DepartmentPeriodicTasksScheduler';
+import { DepartmentPerformanceEvaluation } from './DepartmentPerformanceEvaluation';
+import { DepartmentActivityAuditLog } from './DepartmentActivityAuditLog';
+import { DepartmentAlertsCenter } from './DepartmentAlertsCenter';
+import { AutomatedReportingEngine } from './AutomatedReportingEngine';
+import { InteractiveUserGuideModal } from './InteractiveUserGuideModal';
 import { loadActivityLogs } from '../data/authCredentials';
 
 interface DepartmentWorkspaceViewProps {
@@ -84,6 +94,8 @@ export const DepartmentWorkspaceView: React.FC<DepartmentWorkspaceViewProps> = (
   const [isVideoArchiveOpen, setIsVideoArchiveOpen] = useState<boolean>(false);
   const [showActivityLogs, setShowActivityLogs] = useState<boolean>(false);
   const [isSavedNotice, setIsSavedNotice] = useState<boolean>(false);
+  const [isUserGuideOpen, setIsUserGuideOpen] = useState<boolean>(false);
+  const [activeSubTab, setActiveSubTab] = useState<'form' | 'tasks' | 'evaluation' | 'alerts' | 'reports' | 'logs'>('form');
 
   // Form field values stored locally or loaded from session
   const [fieldValues, setFieldValues] = useState<Record<string, any>>(() => {
@@ -226,20 +238,112 @@ export const DepartmentWorkspaceView: React.FC<DepartmentWorkspaceViewProps> = (
           <button
             onClick={() => setIsRequestModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all cursor-pointer"
-            title="طلب تعديل حقول الاستمارة من مدير النظام"
+            title="طلب تعديل أو إضافة حقول للاستمارة"
           >
             <Lock className="w-3.5 h-3.5 text-amber-400" />
-            <span>مخاطبة مدير النظام</span>
+            <span>طلب تحديث الحقول</span>
+          </button>
+
+          {/* Interactive User Guide Button */}
+          <button
+            onClick={() => setIsUserGuideOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-blue-300 text-xs font-bold border border-blue-500/30 transition-all cursor-pointer"
+            title="فتح دليل الاستخدام التفاعلي لمنظومة كارجاس"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+            <span>دليل الاستخدام</span>
           </button>
 
           {/* Switch Department / Logout */}
           <button
             onClick={onSwitchDepartment}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 text-xs font-medium border border-rose-500/30 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-950/50 hover:bg-rose-900/70 text-rose-200 text-xs font-bold border border-rose-500/40 transition-colors cursor-pointer"
           >
-            <span>خروج / تبديل الإدارة</span>
+            <LogOut className="w-3.5 h-3.5" />
+            <span>تسجيل الخروج من الإدارة</span>
           </button>
         </div>
+      </div>
+
+      {/* Sub Navigation Bar for Department Features */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto no-scrollbar shadow-lg">
+        <button
+          id="subtab-dept-form"
+          onClick={() => setActiveSubTab('form')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeSubTab === 'form'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>استمارة ومطابقة الموقع</span>
+        </button>
+
+        <button
+          id="subtab-dept-tasks"
+          onClick={() => setActiveSubTab('tasks')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeSubTab === 'tasks'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>جدولة المهام الدورية</span>
+        </button>
+
+        <button
+          id="subtab-dept-evaluation"
+          onClick={() => setActiveSubTab('evaluation')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeSubTab === 'evaluation'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 font-black'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          <span>تقييم أداء الإدارة (KPIs)</span>
+        </button>
+
+        <button
+          id="subtab-dept-alerts"
+          onClick={() => setActiveSubTab('alerts')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeSubTab === 'alerts'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Bell className="w-4 h-4" />
+          <span>لوحة التنبيهات والإشعارات</span>
+        </button>
+
+        <button
+          id="subtab-dept-reports"
+          onClick={() => setActiveSubTab('reports')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeSubTab === 'reports'
+              ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>نظام التقارير التلقائي ووضع القراءة</span>
+        </button>
+
+        <button
+          id="subtab-dept-logs"
+          onClick={() => setActiveSubTab('logs')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeSubTab === 'logs'
+              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          <span>سجل نشاط الإدارة</span>
+        </button>
       </div>
 
       {/* Expandable Department Activity Logs Section */}
@@ -290,41 +394,44 @@ export const DepartmentWorkspaceView: React.FC<DepartmentWorkspaceViewProps> = (
         </div>
       )}
 
-      {/* Site Selector */}
-      {sessions.length > 0 && (
-        <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="text-xs font-bold text-slate-200">
-              المحطة أو الموقع الميداني محل الفحص:
-            </span>
-          </div>
+      {/* Subtab View 1: Site Selector and Form */}
+      {activeSubTab === 'form' && (
+        <>
+          {/* Site Selector */}
+          {sessions.length > 0 && (
+            <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-xs font-bold text-slate-200">
+                  المحطة أو الموقع الميداني محل الفحص:
+                </span>
+              </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <select
-              value={activeSession?.id || sessions[0]?.id}
-              onChange={(e) => {
-                const found = sessions.find(s => s.id === e.target.value);
-                if (found) onSelectSession(found);
-              }}
-              className="w-full sm:w-auto bg-slate-800 border border-slate-700 text-xs text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-blue-500"
-            >
-              {sessions.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.code} - {s.title} ({s.locationName}، {s.governorate})
-                </option>
-              ))}
-            </select>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <select
+                  value={activeSession?.id || sessions[0]?.id}
+                  onChange={(e) => {
+                    const found = sessions.find(s => s.id === e.target.value);
+                    if (found) onSelectSession(found);
+                  }}
+                  className="w-full sm:w-auto bg-slate-800 border border-slate-700 text-xs text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-blue-500"
+                >
+                  {sessions.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.code} - {s.title} ({s.locationName}، {s.governorate})
+                    </option>
+                  ))}
+                </select>
 
-            {activeSession?.autoLocationResolved && (
-              <span className="hidden lg:inline-flex items-center gap-1 px-2 py-1 text-[10px] bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/30">
-                <Sparkles className="w-3 h-3 text-emerald-400" />
-                موقع مؤكد أوتوماتيكياً
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+                {activeSession?.autoLocationResolved && (
+                  <span className="hidden lg:inline-flex items-center gap-1 px-2 py-1 text-[10px] bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/30">
+                    <Sparkles className="w-3 text-emerald-400" />
+                    موقع مؤكد أوتوماتيكياً
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
       {/* Special Highlights for Operations & Maintenance (المعدات والآلات) */}
       {isOps && (
@@ -497,18 +604,77 @@ export const DepartmentWorkspaceView: React.FC<DepartmentWorkspaceViewProps> = (
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-amber-400 shrink-0" />
               <span>
-                هذا النموذج مقفل ومعتمد من إدارة النظام. إذا كنت بحاجة لإضافة أو تعديل حقول جديدة، يرجى تقديم طلب رسمي.
+                هذا النموذج معتمد رسمياً ومحمي. لتعديل أو إضافة متطلبات تخصصية، يمكنك رفع طلب تحديث الحقول.
               </span>
             </div>
             <button
               onClick={() => setIsRequestModalOpen(true)}
               className="text-amber-400 hover:text-amber-300 font-semibold underline shrink-0 cursor-pointer"
             >
-              مخاطبة مدير النظام الآن
+              طلب تحديث الحقول
             </button>
           </div>
         </div>
       </div>
+    </>
+  )}
+
+  {/* Subtab View 2: Periodic Tasks Scheduler */}
+  {activeSubTab === 'tasks' && (
+    <div className="space-y-4">
+      <DepartmentPeriodicTasksScheduler department={department} />
+    </div>
+  )}
+
+  {/* Subtab View 3: Performance Evaluation and KPIs */}
+  {activeSubTab === 'evaluation' && (
+    <div className="space-y-4">
+      <DepartmentPerformanceEvaluation 
+        department={department} 
+        onExit={() => setActiveSubTab('form')} 
+      />
+    </div>
+  )}
+
+  {/* Subtab View 4: Department Alerts Center */}
+  {activeSubTab === 'alerts' && (
+    <div className="space-y-4">
+      <DepartmentAlertsCenter 
+        department={department}
+        onNavigateSubTab={(tab) => setActiveSubTab(tab as any)}
+      />
+    </div>
+  )}
+
+  {/* Subtab View 5: Automated Reporting Engine & Reader Mode */}
+  {activeSubTab === 'reports' && (
+    <div className="space-y-4">
+      <AutomatedReportingEngine 
+        department={department}
+        sessions={sessions}
+        onExit={() => setActiveSubTab('form')}
+      />
+    </div>
+  )}
+
+  {/* Subtab View 6: Department Activity Audit Log */}
+  {activeSubTab === 'logs' && (
+    <div className="space-y-4">
+      <DepartmentActivityAuditLog 
+        department={department}
+        onExit={() => setActiveSubTab('form')}
+      />
+    </div>
+  )}
+
+      {/* Interactive User Guide Modal */}
+      {isUserGuideOpen && (
+        <InteractiveUserGuideModal
+          currentDepartment={department}
+          onClose={() => setIsUserGuideOpen(false)}
+          onNavigateSubTab={(tab) => setActiveSubTab(tab as any)}
+        />
+      )}
 
       {/* Request Form Change Modal */}
       <RequestFormChangeModal

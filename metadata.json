@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
-  "requestFramePermissions": [],
+  "name": "منظومة إدارة مشروعات ومحطات كارجاس",
+  "description": "منظومة إدارة مشروعات ومحطات كارجاس: رصد وتوثيق الإدارات والمعدات والمحطات والجدوى الهندسية والاقتصادية",
+  "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

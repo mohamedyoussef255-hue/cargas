@@ -31,7 +31,9 @@ import {
   Square,
   Sparkles,
   ArrowRight,
-  Eye
+  Eye,
+  Share2,
+  LogOut
 } from 'lucide-react';
 import { 
   MonitoringSession, 
@@ -395,10 +397,10 @@ export const StationExecutionTracker: React.FC<StationExecutionTrackerProps> = (
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20" />
 
         <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          {/* Logo and Station Title */}
+          {/* Station Title & Icon */}
           <div className="flex items-center gap-4">
-            <div className="bg-slate-950/80 p-2 rounded-2xl border border-slate-800 shadow-inner">
-              <CargasNgvLogo size="lg" layout="vertical" subtitle="قطاع المشروعات والتنفيذ" />
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <HardHat className="w-6 h-6" />
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1049,17 +1051,38 @@ export const StationExecutionTracker: React.FC<StationExecutionTrackerProps> = (
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    const text = `*محضر الموقف التنفيذي الرسمي المعتمد للمحطة - شركة كارجاس NGV*
+📌 المحطة: ${session.title || 'محطة تموين الغاز الطبيعي'} (${session.code})
+📍 الموقع: ${session.locationName}، ${session.governorate}
+📊 نسبة الإنجاز الكلية: ${executionData.overallProgressPercent}%
+💰 المنصرف الفعلي: ${(executionData.totalDisbursedBudgetEgp / 1000000).toFixed(2)} مليون ج.م
+📅 التاريخ: ${new Date().toISOString().split('T')[0]}
+
+📄 التقرير متوفر ومعتمد للطباعة وتصدير PDF مباشرة من منصة كارجاس.`;
+                    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow transition-colors"
+                  title="إرسال ملخص التقرير المعتمد عبر الواتساب"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>إرسال عبر الواتساب</span>
+                </button>
+                <button
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow transition-colors"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>طباعة الآن (Print)</span>
+                  <span>طباعة / تصدير PDF</span>
                 </button>
                 <button
                   onClick={() => setShowPrintModal(false)}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="خروج من التقرير"
                 >
-                  إغلاق
+                  <LogOut className="w-4 h-4" />
+                  <span>خروج من التقرير</span>
                 </button>
               </div>
             </div>
@@ -1075,8 +1098,9 @@ export const StationExecutionTracker: React.FC<StationExecutionTrackerProps> = (
                   <p className="text-[11px] font-semibold text-slate-500">قطاع المشروعات والتنفيذ والأمن الصناعي</p>
                 </div>
 
-                <div className="flex flex-col items-center">
-                  <CargasNgvLogo size="lg" layout="vertical" subtitle="الغاز الطبيعي للمركبات • CARGAS" lightBackground={true} />
+                <div className="flex flex-col items-center text-center">
+                  <span className="text-xl font-black text-slate-900 tracking-wider">كارجاس <span className="text-emerald-700 font-mono">NGV</span></span>
+                  <span className="text-[10px] text-slate-600 font-bold">الغاز الطبيعي للمركبات • CARGAS</span>
                 </div>
 
                 <div className="text-left space-y-1 font-mono text-xs text-slate-700">

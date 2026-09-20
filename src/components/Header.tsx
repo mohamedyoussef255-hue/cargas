@@ -21,11 +21,11 @@ import {
   Sparkles,
   ShieldAlert,
   ShieldCheck,
-  FileText
+  FileText,
+  Home
 } from 'lucide-react';
 import { MonitoringSession, DepartmentRole, ActiveTabType } from '../types';
 export type { ActiveTabType };
-import { CargasNgvLogo } from './CargasNgvLogo';
 import { DEPARTMENTS_METADATA, DEPARTMENT_ROLE_SPECS } from '../data/departmentCustomFields';
 
 interface HeaderProps {
@@ -132,13 +132,22 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-3">
           
-          {/* Logo and Brand with Official Cargas NGV emblem - Natural & Compact */}
-          <div className="flex items-center gap-2.5">
-            <CargasNgvLogo size="sm" showText={false} className="hover:scale-105 transition-transform" />
+          {/* Brand Title - Clean and Logo-free per instructions */}
+          <div 
+            onClick={() => {
+              if (isAdmin) {
+                setActiveTab('portal');
+              } else {
+                setActiveTab('departments');
+              }
+            }}
+            title={isAdmin ? "الانتقال إلى لوحة التحكم الرئيسية" : `بيئة عمل ${roleMeta.title}`}
+            className="flex items-center gap-2.5 cursor-pointer hover:opacity-95 transition-opacity"
+          >
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="text-xs sm:text-sm font-bold text-white tracking-tight flex items-center gap-1.5">
-                  <span>منظومة أدارة مشروعات ومحطات كارجاس</span>
+                  <span>{effectiveRole === 'admin' ? 'منظومة إدارة مشروعات ومحطات كارجاس' : roleMeta.title}</span>
                   <span className="text-amber-400 font-mono font-bold text-[11px] sm:text-xs bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">NGV</span>
                 </h1>
                 
@@ -146,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className={`hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${spec.theme.badgeClass}`}>
                   <UserCheck className="w-3 h-3" />
                   <span>
-                    {isAdminPreview ? `معاينة: ${roleMeta.title}` : (userType === 'staff' ? `فريق عمل ${roleMeta.title.split(' ')[1] || ''}` : roleMeta.title)}
+                    {isAdminPreview ? `معاينة: ${roleMeta.title}` : (effectiveRole === 'admin' ? 'إدارة النظام والتحكم الشامل' : (userType === 'staff' ? `فريق عمل ومهندسو الإدارة` : 'المدير العام للإدارة'))}
                   </span>
                 </span>
               </div>
@@ -198,17 +207,16 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="font-mono text-emerald-300 font-black tracking-wider">{hotline}</span>
             </a>
 
-            {/* Department Switcher / Portal Landing Button (Allowed for GM and Admin only; hidden for direct staff) */}
-            {onSwitchDepartment && !isDirectLink && userType !== 'staff' && (
+            {/* Department Logout / Switcher (Allowed for GM and Staff, cleanly logs out without showing Admin) */}
+            {onSwitchDepartment && !isDirectLink && (
               <button
                 id="btn-switch-department"
                 onClick={onSwitchDepartment}
-                title="الرجوع لبوابة دخول الإدارات الرئيسية"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-medium transition-colors cursor-pointer"
+                title={effectiveRole === 'admin' ? "الرجوع لبوابة دخول الإدارات الرئيسية" : "تسجيل الخروج من الإدارة"}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/70 text-rose-200 border border-rose-500/30 text-xs font-medium transition-colors cursor-pointer"
               >
-                <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                <span className="hidden md:inline">بوابة الإدارات</span>
-                <LogOut className="w-3 h-3 text-slate-400" />
+                <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden sm:inline">{effectiveRole === 'admin' ? 'بوابة الإدارات' : 'تسجيل الخروج'}</span>
               </button>
             )}
           </div>
@@ -230,6 +238,22 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           ) : (
             <>
+              {/* Tab 0: Main Home Portal - ONLY for Super Admin */}
+              {isAdmin && (
+                <button
+                  id="tab-main-portal"
+                  onClick={() => setActiveTab('portal')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    activeTab === 'portal'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-slate-700/60'
+                  }`}
+                >
+                  <Home className="w-4 h-4 text-blue-400" />
+                  <span>بوابة المنظومة المركزية</span>
+                </button>
+              )}
+
               {/* Tab 1: Department Workspace (Primary for all departments except Super Admin) */}
               {allowedTabs.includes('departments') && (
                 <button
@@ -243,7 +267,7 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Building2 className="w-4 h-4" />
                   <span>
-                    {isAdmin ? 'مراجعة واعتماد الإدارات' : `صفحة واستمارة ${roleMeta.title.split(' ')[1] || 'الإدارة'}`}
+                    {isAdmin ? 'مراجعة واعتماد الإدارات' : `واجهة واستمارة ${roleMeta.title.replace('إدارة ', '')}`}
                   </span>
                   {!isAdmin && (
                     <span className="px-1.5 py-0.2 text-[10px] rounded bg-white/20 text-white font-mono">
@@ -350,7 +374,7 @@ export const Header: React.FC<HeaderProps> = ({
               )}
 
               {/* Tab: Super Admin Management (Only for Super Admin) */}
-              {allowedTabs.includes('admin') && (
+              {isAdmin && allowedTabs.includes('admin') && (
                 <button
                   id="tab-admin"
                   onClick={() => setActiveTab('admin')}

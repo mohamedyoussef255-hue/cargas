@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { DepartmentRole, CustomFormField, FormChangeRequest } from '../types';
 import { DEPARTMENTS_METADATA } from '../data/departmentCustomFields';
+import { ExcelTemplateImporterModal } from './ExcelTemplateImporterModal';
 
 interface AdminFormCustomizerProps {
   customFields: CustomFormField[];
@@ -49,6 +50,7 @@ export const AdminFormCustomizer: React.FC<AdminFormCustomizerProps> = ({
   
   // Add Field Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState<boolean>(false);
   const [newLabel, setNewLabel] = useState<string>('');
   const [newType, setNewType] = useState<CustomFormField['type']>('text');
   const [newSection, setNewSection] = useState<string>('بيانات المعدات والآلات');
@@ -151,6 +153,26 @@ export const AdminFormCustomizer: React.FC<AdminFormCustomizerProps> = ({
     setNewDescription('');
     setNewOptionsStr('');
     setNewDefaultVal('');
+  };
+
+  // Import fields dynamically generated from Excel template
+  const handleImportExcelFields = (dept: DepartmentRole, importedFields: any[]) => {
+    const converted: CustomFormField[] = importedFields.map((f, i) => ({
+      id: f.id || `fld-${dept}-${Date.now()}-${i}`,
+      department: dept,
+      label: f.label,
+      key: `custom_${Date.now().toString(36)}_${i}`,
+      type: (f.type as any) || 'text',
+      options: f.options,
+      required: f.required || false,
+      visible: true,
+      section: f.section || 'استمارة الفحص الميداني المعتمدة (Excel)',
+      description: `تم توليده واعتماده آلياً من ملف استمارة Excel لقسم ${DEPARTMENTS_METADATA[dept]?.title}`,
+      createdBy: 'مدير النظام المركزي',
+      createdAt: new Date().toLocaleDateString('ar-EG')
+    }));
+
+    onUpdateFields([...customFields, ...converted]);
   };
 
   // Approve Change Request from Department (including Word/Excel file table imports)
@@ -446,6 +468,16 @@ export const AdminFormCustomizer: React.FC<AdminFormCustomizerProps> = ({
                 <span>معاينة صفحة الإدارة قبل الإرسال</span>
               </button>
             )}
+
+            {/* Excel Import Button */}
+            <button
+              type="button"
+              onClick={() => setIsExcelModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md shadow-teal-600/20 shrink-0 cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+              <span>استيراد وتوليد حقول من Excel</span>
+            </button>
 
             {/* Add Field Button */}
             <button
@@ -746,6 +778,15 @@ export const AdminFormCustomizer: React.FC<AdminFormCustomizerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Excel Dynamic Template Importer Modal */}
+      <ExcelTemplateImporterModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        targetDepartment={selectedDept}
+        onImportFields={(dept, fields) => handleImportExcelFields(dept, fields)}
+        currentUserRole="admin"
+      />
 
     </div>
   );

@@ -11,7 +11,11 @@ import {
   TrendingUp, 
   Flame, 
   ShieldCheck,
-  Zap
+  Zap,
+  Share2,
+  Send,
+  LogOut,
+  RotateCcw
 } from 'lucide-react';
 import { MonitoringSession, VEHICLE_TYPES, VehicleType } from '../types';
 import { CargasNgvLogo } from './CargasNgvLogo';
@@ -89,6 +93,22 @@ export const FeasibilityReportModal: React.FC<FeasibilityReportModalProps> = ({
     window.print();
   };
 
+  const handleShareWhatsApp = () => {
+    const text = `*تقرير دراسة الجدوى التنفيذي الرسمي - شركة كارجاس NGV*
+📌 المشروع: ${projectName || 'محطة تموين الغاز الطبيعي'}
+📍 المحافظة والمدينة: ${governorate} - ${city}
+👷 المعاين: ${surveyorName}
+🚗 إجمالي السيارات المرصودة: ${totalSurveyed.toLocaleString()} سيارة
+⚡ الاستهلاك اليومي المتوقع: ${dailyGasDispensedM3.toLocaleString()} م³ / يوم
+⏳ فترة الاسترداد (Payback): ${paybackYears.toFixed(1)} سنة
+📈 صافي القيمة الحالية (NPV): ${npvEgp.toLocaleString()} ج.م
+📊 معدل العائد الداخلي (IRR): ${irrPercent.toFixed(1)}%
+
+📄 يمكن طباعة التقرير أو حفظه بصيغة PDF مباشرة من المنظومة.`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
   const handleDownloadJson = () => {
     const reportData = {
       project: projectName,
@@ -145,6 +165,14 @@ export const FeasibilityReportModal: React.FC<FeasibilityReportModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={handleShareWhatsApp}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer transition-colors shadow-sm"
+              title="إرسال ملخص التقرير ونسخة PDF بالواتساب"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>إرسال عبر الواتساب</span>
+            </button>
+            <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer transition-colors"
             >
@@ -159,8 +187,18 @@ export const FeasibilityReportModal: React.FC<FeasibilityReportModalProps> = ({
               <span>تحميل البيانات (JSON)</span>
             </button>
             <button
+              id="btn-feasibility-back"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-bold cursor-pointer transition-all shadow"
+              title="تراجع والعودة إلى شاشة التحليلات ودراسات الجدوى"
+            >
+              <RotateCcw className="w-4 h-4 text-amber-400" />
+              <span>تراجع / عودة</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              title="إغلاق التقرير"
             >
               <X className="w-5 h-5" />
             </button>
@@ -372,6 +410,37 @@ export const FeasibilityReportModal: React.FC<FeasibilityReportModalProps> = ({
             <div>
               <div className="font-semibold text-white print:text-black mb-8">اعتماد لجنة الاستثمار والتطوير</div>
               <div className="border-t border-dashed border-slate-600 pt-1">خاتم الشركة / الإدارة</div>
+            </div>
+          </div>
+
+          {/* Bottom Quick Action Bar for Easy Exit, Print & WhatsApp */}
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700 shadow-xl flex flex-wrap items-center justify-between gap-3 print:hidden">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 text-xs font-bold transition-all cursor-pointer shadow"
+            >
+              <RotateCcw className="w-4 h-4 text-amber-400" />
+              <span>تراجع والعودة إلى التحليلات</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-emerald-600/30"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>إرسال دراسة الجدوى بالواتساب</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-blue-600/30"
+              >
+                <Printer className="w-4 h-4" />
+                <span>طباعة التقرير (A4 / PDF)</span>
+              </button>
             </div>
           </div>
 

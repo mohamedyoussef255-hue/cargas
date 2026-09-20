@@ -222,6 +222,8 @@ export interface MonitoringSession {
   endTime?: string;
   durationSeconds: number;
   counts: Record<VehicleType, number>;
+  totalVehicles?: number;
+  nearestStationDistanceKm?: number;
   detections: DetectionRecord[];
   notes?: string;
   // Geolocation & Auto GPS tracking metadata
@@ -486,7 +488,7 @@ export interface CNGStation {
   hasConversionCenter: boolean;
   facilityType?: FacilityType; // محطة تموين | مركز تحويل | متكاملة
   status: 'active' | 'maintenance' | 'proposed';
-  brand?: 'cargas' | 'gastec' | 'mastergas' | 'taqa' | 'chillout' | 'wataniya' | 'totalenergies' | 'shell' | 'mobil' | 'misr_petroleum' | 'coop' | 'gogas' | 'other';
+  brand?: 'cargas' | 'gastec' | 'mastergas' | 'taqa' | 'chillout' | 'wataniya' | 'totalenergies' | 'shell' | 'mobil' | 'misr_petroleum' | 'coop' | 'al_neel' | 'al_sharq' | 'petromin' | 'eni' | 'emarat_misr' | 'gogas' | 'other';
   cngCapacityM3h?: number;
   distanceFromSiteKm?: number;
   notes?: string;
@@ -905,6 +907,7 @@ export interface MarketingSurveyAssignment {
 }
 
 export type ActiveTabType = 
+  | 'portal'
   | 'camera' 
   | 'sessions' 
   | 'map' 
@@ -1003,4 +1006,104 @@ export interface RecordedVideoSession {
   fileSizeBytes?: number;
 }
 
+// ==========================================
+// Periodic Task Scheduling
+// ==========================================
+export type TaskRecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semi_annual' | 'annual';
+export type TaskExecutionStatus = 'scheduled' | 'in_progress' | 'completed' | 'overdue';
 
+export interface PeriodicTaskItem {
+  id: string;
+  department: DepartmentRole;
+  title: string;
+  description: string;
+  category: string;
+  frequency: TaskRecurrenceFrequency;
+  frequencyLabel: string;
+  assignedTo: string;
+  assignedPhone?: string;
+  dueDate: string;
+  lastExecutedDate?: string;
+  nextScheduledDate: string;
+  status: TaskExecutionStatus;
+  priority: 'high' | 'medium' | 'normal';
+  requiresProofImage?: boolean;
+  notes?: string;
+  completedAt?: string;
+  completedBy?: string;
+}
+
+// ==========================================
+// Department Performance Evaluation
+// ==========================================
+export interface DepartmentEvaluationCriterion {
+  id: string;
+  title: string;
+  weightPercent: number; // e.g. 25%
+  score: number; // 0-100
+  benchmark: number; // target e.g. 90
+  notes: string;
+  strengths: string[];
+  recommendations: string[];
+}
+
+export interface DepartmentEvaluationReport {
+  id: string;
+  department: DepartmentRole;
+  departmentName: string;
+  gmName: string;
+  evaluationPeriod: string; // e.g. "الربع الثالث 2026"
+  evaluatedAt: string;
+  evaluatorName: string;
+  evaluatorRole: string;
+  overallScore: number; // 0-100
+  grade: 'A+' | 'A' | 'B+' | 'B' | 'C';
+  gradeLabel: string;
+  criteria: DepartmentEvaluationCriterion[];
+  executiveSummary: string;
+  keyStrengths: string[];
+  areasOfImprovement: string[];
+  approvedBySuperAdmin: boolean;
+}
+
+// ==========================================
+// Department Alerts & Notification Board
+// ==========================================
+export type AlertSeverity = 'critical' | 'warning' | 'info';
+
+export interface DepartmentAlertItem {
+  id: string;
+  department: DepartmentRole | 'all';
+  title: string;
+  message: string;
+  severity: AlertSeverity;
+  category: 'periodic_task' | 'safety' | 'legal' | 'form_review' | 'budget' | 'maintenance';
+  categoryLabel: string;
+  createdAt: string;
+  dateStr: string;
+  dueDate?: string;
+  actionLabel?: string;
+  actionSubTab?: 'form' | 'tasks' | 'evaluation' | 'reports' | 'logs';
+  isRead: boolean;
+}
+
+// ==========================================
+// Automated Reporting Engine Types
+// ==========================================
+export interface AutomatedReportSnapshot {
+  id: string;
+  department: DepartmentRole;
+  departmentName: string;
+  reportPeriod: string;
+  generatedAt: string;
+  generatedBy: string;
+  totalSitesSurveyed: number;
+  completedTasksCount: number;
+  pendingTasksCount: number;
+  overdueTasksCount: number;
+  kpiOverallScore: number;
+  executiveSummary: string;
+  operationalHighlights: string[];
+  criticalAlertsAddressed: string[];
+  plannedNextPeriod: string[];
+}

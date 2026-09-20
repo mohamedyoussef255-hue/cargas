@@ -13,7 +13,12 @@ export type BrandType =
   | 'mobil' 
   | 'misr_petroleum'
   | 'coop'
-  | 'gogas'
+  | 'al_neel'
+  | 'al_sharq'
+  | 'petromin'
+  | 'eni'
+  | 'emarat_misr'
+  | 'gogas' 
   | 'other';
 
 export interface BrandInfo {
@@ -136,6 +141,56 @@ export const BRANDS_INFO: Record<BrandType, BrandInfo> = {
     accentColor: '#1e3a8a',
     badgeBg: 'bg-yellow-500/20',
     textColor: 'text-yellow-400',
+    isCompetitor: true,
+  },
+  al_neel: {
+    id: 'al_neel',
+    nameAr: 'النيل للبترول',
+    nameEn: 'Al Neel',
+    primaryColor: '#0284c7',
+    accentColor: '#38bdf8',
+    badgeBg: 'bg-sky-500/20',
+    textColor: 'text-sky-400',
+    isCompetitor: true,
+  },
+  al_sharq: {
+    id: 'al_sharq',
+    nameAr: 'الشرق للغاز',
+    nameEn: 'Al Sharq Gas',
+    primaryColor: '#ea580c',
+    accentColor: '#f97316',
+    badgeBg: 'bg-orange-500/20',
+    textColor: 'text-orange-400',
+    isCompetitor: true,
+  },
+  petromin: {
+    id: 'petromin',
+    nameAr: 'بترومين',
+    nameEn: 'Petromin',
+    primaryColor: '#e11d48',
+    accentColor: '#f59e0b',
+    badgeBg: 'bg-rose-500/20',
+    textColor: 'text-rose-400',
+    isCompetitor: true,
+  },
+  eni: {
+    id: 'eni',
+    nameAr: 'إيني',
+    nameEn: 'Eni',
+    primaryColor: '#eab308',
+    accentColor: '#000000',
+    badgeBg: 'bg-amber-500/20',
+    textColor: 'text-amber-400',
+    isCompetitor: true,
+  },
+  emarat_misr: {
+    id: 'emarat_misr',
+    nameAr: 'إمارات مصر',
+    nameEn: 'Emarat Misr',
+    primaryColor: '#16a34a',
+    accentColor: '#dc2626',
+    badgeBg: 'bg-emerald-600/20',
+    textColor: 'text-emerald-400',
     isCompetitor: true,
   },
   gogas: {
@@ -364,6 +419,61 @@ export function getCompanyMarkerHtml(
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
           <span style="font-size: 11px;">⚡</span>
           <span style="font-size: 7.5px; font-weight: 900; color: #10b981; font-family: sans-serif;">GoGas</span>
+        </div>
+      `;
+      break;
+
+    case 'al_neel':
+      logoGlyph = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <div style="width: 18px; height: 18px; border-radius: 4px; background: #0284c7; display: flex; align-items: center; justify-content: center; border: 1px solid #38bdf8;">
+            <span style="color: #ffffff; font-size: 8px; font-weight: 900;">النيل</span>
+          </div>
+          <span style="font-size: 7px; font-weight: 800; color: #38bdf8; font-family: 'Cairo', sans-serif;">النيل للبترول</span>
+        </div>
+      `;
+      break;
+
+    case 'al_sharq':
+      logoGlyph = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <div style="width: 18px; height: 18px; border-radius: 4px; background: #ea580c; display: flex; align-items: center; justify-content: center; border: 1px solid #fed7aa;">
+            <span style="color: #ffffff; font-size: 8px; font-weight: 900;">شرق</span>
+          </div>
+          <span style="font-size: 7px; font-weight: 800; color: #f97316; font-family: 'Cairo', sans-serif;">الشرق للغاز</span>
+        </div>
+      `;
+      break;
+
+    case 'petromin':
+      logoGlyph = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <div style="width: 18px; height: 18px; border-radius: 50%; background: #e11d48; display: flex; align-items: center; justify-content: center; border: 1px solid #f59e0b;">
+            <span style="color: #ffffff; font-size: 7.5px; font-weight: 900;">PTR</span>
+          </div>
+          <span style="font-size: 7px; font-weight: 800; color: #fb7185; font-family: sans-serif;">PETROMIN</span>
+        </div>
+      `;
+      break;
+
+    case 'eni':
+      logoGlyph = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <div style="width: 18px; height: 18px; border-radius: 4px; background: #eab308; display: flex; align-items: center; justify-content: center; border: 1px solid #000000;">
+            <span style="color: #000000; font-size: 9px; font-weight: 900;">eni</span>
+          </div>
+          <span style="font-size: 7px; font-weight: 900; color: #facc15; font-family: sans-serif;">ENI</span>
+        </div>
+      `;
+      break;
+
+    case 'emarat_misr':
+      logoGlyph = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <div style="width: 18px; height: 18px; border-radius: 4px; background: #16a34a; display: flex; align-items: center; justify-content: center; border: 1px solid #dc2626;">
+            <span style="color: #ffffff; font-size: 7.5px; font-weight: 900;">إمارات</span>
+          </div>
+          <span style="font-size: 6.5px; font-weight: 800; color: #4ade80; font-family: 'Cairo', sans-serif;">إمارات مصر</span>
         </div>
       `;
       break;

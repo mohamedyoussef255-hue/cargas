@@ -76,38 +76,38 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
     switch (department) {
       case 'operations':
         return [
-          { id: 'compressor', label: 'ضاغط الغاز الرئيسي (Compressor)' },
-          { id: 'dispenser', label: 'موزعات الغاز والطلمبات (Dispensers)' },
-          { id: 'cascades', label: 'اسطوانات التخزين وبنوك الغاز (Cascades)' },
-          { id: 'pressure_gauges', label: 'عدادات الضغط والحرارة' },
-          { id: 'cooling_system', label: 'نظام التبريد ومراوح التهوية' },
-          { id: 'control_panel', label: 'لوحة التحكم الكهربائية والمراقبة' },
+          { id: 'compressor_location', label: 'رصد مكان ضاغط الغاز الرئيسي ومسافات الارتداد' },
+          { id: 'compressor_specs', label: 'بيان مواصفات الضاغط (1000 - 1500 م³/ساعة - 250 بار)' },
+          { id: 'dispensers_audit', label: 'رصد أماكن موزعات الغاز (Dispensers) وجزر التموين' },
+          { id: 'cascades_audit', label: 'رصد وتصوير بنوك الأسطوانات ومصفوفات التخزين (Cascades)' },
+          { id: 'control_panel_audit', label: 'رصد لوحة التحكم الكهربائية وغرفة التحكم والمراقبة (MCC)' },
+          { id: 'piping_cooling', label: 'بيان وتصوير خطوط السحب والطرد ونظام التبريد والتهوية' },
         ];
       case 'projects':
         return [
-          { id: 'land_leveling', label: 'تسوية الأرض ومناسيب الموقع' },
-          { id: 'concrete_bases', label: 'القواعد الخرسانية المسلحة للضاغط' },
-          { id: 'canopy_structure', label: 'الهيكل المعدني والجمالونات للمظلة' },
-          { id: 'boundary_wall', label: 'السور الخارجي وبوابات الدخول والخروج' },
-          { id: 'sales_building', label: 'مبنى المبيعات والتحكم' },
-          { id: 'pavement', label: 'أرضيات الهليكوبتر وأعمال الرصف' },
+          { id: 'land_survey', label: 'رفع مساحي دقيق للمكان وتحديد إحداثيات الحدود والأركان' },
+          { id: 'engineering_maps', label: 'مطابقة الخرائط الهندسية والمخطط العام المعتمد (Layout Plan)' },
+          { id: 'land_dimensions', label: 'قياس أبعاد الأرض الفعلية (الطول × العرض) وإجمالي المساحة' },
+          { id: 'access_roads', label: 'فحص الشوارع المحيطة ومحاور الدخول والخروج وعروض الحارات' },
+          { id: 'soil_levels', label: 'فحص مناسيب الموقع وتسوية الأرض واختبارات التربة والأساسات' },
+          { id: 'concrete_foundations', label: 'رصد وتوثيق القواعد الخرسانية المسلحة للضاغط والمظلة' },
         ];
       case 'hse':
         return [
-          { id: 'gas_detectors', label: 'كواشف الغاز الطبيعي (Gas Detectors)' },
-          { id: 'flame_detectors', label: 'كواشف اللهب والأشعة UV/IR' },
-          { id: 'esd_valve', label: 'صمام الغلق في الطوارئ (Emergency Shutdown ESD)' },
-          { id: 'fire_extinguishers', label: 'طفايات الحريق ومدافع المسحوق الجاف' },
-          { id: 'safety_distances', label: 'فحص مسافات الأمان NFPA 52' },
-          { id: 'emergency_exits', label: 'مخارج الطوارئ وممرات الإخلاء' },
+          { id: 'safety_system_execution', label: 'رصد منظومة السلامة والصحة المهنية والأمن الصناعي أثناء التنفيذ' },
+          { id: 'nfpa_safety_distances', label: 'فحص ومطابقة مسافات الأمان القياسية طبقاً لكود NFPA 52' },
+          { id: 'gas_detectors_audit', label: 'رصد وتجربة كواشف الغاز الطبيعي (Gas Detectors)' },
+          { id: 'flame_detectors_audit', label: 'رصد كواشف اللهب والأشعة تحت وفوق الحمراء UV/IR' },
+          { id: 'esd_valves_audit', label: 'فحص محابس وصمامات الغلق السريع في الطوارئ (ESD Valves)' },
+          { id: 'fire_extinguishers_audit', label: 'منظومة مكافحة الحريق ومدافع البودرة ومسارات الهروب والإخلاء' },
         ];
       case 'technical':
         return [
-          { id: 'prs_station', label: 'محطة تخفيض الضغط والقياس (PRS)' },
-          { id: 'pipeline_tie_in', label: 'نقطة الربط على خط الغاز الرئيسي' },
-          { id: 'flow_meters', label: 'عدادات قياس التدفق والحجم' },
-          { id: 'pressure_tests', label: 'اختبارات ضغوط النيتروجين والغاز' },
-          { id: 'valves_skid', label: 'منظومة المحابس والفلترة' },
+          { id: 'prs_station', label: 'رصد موقع محطة تخفيض الضغط والقياس (PRS)' },
+          { id: 'pipeline_tie_in', label: 'نقطة الربط على خط الغاز الطبيعي المغذي وبيان الضغط' },
+          { id: 'flow_meters', label: 'عدادات قياس التدفق والحجم والحرارة القياسية' },
+          { id: 'pressure_tests', label: 'اختبارات ضغوط النيتروجين وفحص تسريب الغاز' },
+          { id: 'valves_skid', label: 'منظومة المحابس والفلترة وخط التغذية الرئيسي' },
         ];
       default:
         return [

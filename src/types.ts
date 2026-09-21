@@ -244,6 +244,13 @@ export interface MonitoringSession {
   recordedVideoUrl?: string;
   videoDurationSeconds?: number;
   sessionSnapshotThumbnails?: string[];
+  // Dedicated Marketing Sessions (4 specific types) & Inter-Department Consensus
+  surveyCategory?: MarketingSessionCategory;
+  surveyPeriods?: SurveyTimePeriodItem[];
+  competitorsSurvey?: CompetitorSurveyRecord[];
+  parkingHubsSurvey?: ParkingHubSurveyRecord[];
+  densityHubsSurvey?: DensityHubSurveyRecord[];
+  stationConsensus?: StationConsensusEvaluation;
 }
 
 // Station Construction & Execution Phase
@@ -802,6 +809,9 @@ export interface DepartmentMetadata {
   iconName: string;
   primaryScope: string;
   keyResponsibilities: string[];
+  defaultGmName?: string;
+  defaultGmPhone?: string;
+  gmTitle?: string;
 }
 
 // Dynamic Custom Form Field (Editable by Admin only)
@@ -879,12 +889,17 @@ export interface LandownerApplication {
   licenseStatus: 'has_building_permit' | 'has_commercial_license' | 'agricultural_with_reconciliation' | 'unlicensed';
   partnershipPreference: 'cng_only_station' | 'integrated_fuel_and_cng' | 'conversion_center_only' | 'station_and_conversion' | 'long_term_lease_to_cargas' | 'revenue_share';
   applicationDate: string;
-  status: 'pending_review' | 'surveyor_dispatched' | 'survey_completed' | 'approved_marketing' | 'rejected';
+  status: 'pending_review' | 'client_submitted' | 'surveyor_dispatched' | 'survey_completed' | 'approved_marketing' | 'rejected';
   notes?: string;
   marketingEvaluationScore?: number;
   assignedSurveyorName?: string;
   assignedSurveyorPhone?: string;
   linkedSessionId?: string;
+  filledByClient?: boolean;
+  clientSubmittedAt?: string;
+  clientUpdateNotes?: string;
+  preferredSurveyDate?: string;
+  clientPhotos?: string[];
 }
 
 // WhatsApp Shareable Field Survey Assignment
@@ -899,6 +914,8 @@ export interface MarketingSurveyAssignment {
   assignedBy: string;
   assignedDate: string;
   targetScope: 'new_station' | 'dual_fuel_conversion' | 'fleet_census' | 'highway_corridor';
+  sessionCategory?: MarketingSessionCategory;
+  assignedDepartmentTarget?: DepartmentRole;
   status: 'dispatched' | 'in_progress' | 'completed' | 'cancelled';
   surveyToken: string;
   surveyUrl: string;
@@ -1106,4 +1123,247 @@ export interface AutomatedReportSnapshot {
   operationalHighlights: string[];
   criticalAlertsAddressed: string[];
   plannedNextPeriod: string[];
+}
+
+// ==========================================
+// Marketing Dedicated Sessions & Multi-Period Survey
+// ==========================================
+export type MarketingSessionCategory = 
+  | 'site_periods'      // جلسة رصد ومعاينة الموقع (4 فترات زمنية مختلفة مدة كل جلسة لا تقل عن 15 دقيقة)
+  | 'density_hubs'      // جلسة رصد التجمعات ذات الكثافة
+  | 'competitors'       // جلسة رصد المنافسين ومحطات الوقود المجاورة
+  | 'stations_parking'; // جلسة رصد المواقف وسيارات الأجرة والسرفيس
+
+export interface SurveyTimePeriodItem {
+  id: string;
+  periodNumber: number;
+  periodName: string;
+  timeSlot: string; // e.g. "07:00 ص - 10:00 ص"
+  minDurationMinutes: number; // 15 دقيقة على الأقل
+  actualDurationSeconds: number;
+  completed: boolean;
+  counts: Record<VehicleType, number>;
+  totalVehicles: number;
+  trafficRatePerHour: number;
+  peakHourNotes?: string;
+  recordedAt?: string;
+}
+
+export interface CompetitorSurveyRecord {
+  id: string;
+  name: string;
+  brand: string;
+  distanceKm: number;
+  distanceMeter?: number;
+  dispensersCount: number;
+  cngAvailable: boolean;
+  cngPriceM3: number;
+  queueLengthVehicles: number;
+  avgWaitTimeMinutes: number;
+  notes?: string;
+}
+
+export interface ParkingHubSurveyRecord {
+  id: string;
+  hubName: string;
+  locationDetails: string;
+  transportType: 'microbus' | 'taxi' | 'pickup' | 'van' | 'mixed';
+  linesCount: number;
+  activeVehiclesCount: number;
+  dailyPassengersEst: number;
+  conversionReadiness: 'high' | 'medium' | 'low';
+  notes?: string;
+}
+
+export interface DensityHubSurveyRecord {
+  id: string;
+  zoneName: string;
+  zoneType: 'commercial' | 'industrial' | 'major_intersection' | 'logistics_center';
+  estimatedVehiclesPerHour: number;
+  peakFlowTime: string;
+  cngPotentialDemand: 'very_high' | 'high' | 'medium';
+  notes?: string;
+}
+
+// Inter-Department Collaborative Decision System
+export interface StationConsensusEvaluation {
+  id: string;
+  sessionId: string;
+  siteName: string;
+  governorate: string;
+  // Marketing is Step 1 (أولى الخطوات في إبداء صلاحية الموقع)
+  marketingStep: {
+    status: 'viable' | 'non_viable' | 'postponed';
+    evaluatedAt: string;
+    evaluator: string;
+    reason: string;
+    // Operational and capacity recommendations (النصائح بالطاقة الاستيعابية والتشغيلية)
+    recommendedCompressorCapacityNm3h: number; // e.g. 1500 Nm3/h
+    recommendedDispensersCount: number;        // e.g. 3 (6 خراطيم تموين)
+    recommendedDualFuelPoints: number;
+    projectedDailyCngDemandM3: number;        // e.g. 18,500 م3/يوم
+    peakHourlyCapacityM3: number;
+    recommendedConversionWorkshop: boolean;
+  };
+  // Department Reviews consensus
+  departmentConsensus: Record<DepartmentRole, {
+    approved: boolean | null; // null = pending
+    decision: 'approve' | 'reject' | 'postpone' | 'pending';
+    notes: string;
+    departmentName: string;
+    updatedAt?: string;
+  }>;
+  // Final Institutional Resolution (قرار التنفيذ أو الرفض أو التأجيل بأسباب)
+  finalResolution: {
+    decision: 'execute' | 'reject' | 'postpone' | 'under_review';
+    reasons: string[];
+    officialNotes: string;
+    resolvedAt?: string;
+    resolvedBy?: string;
+    committeeMembers?: string[];
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Official Department Correspondence System (المراسلات والمخاطبات بين الإدارات)
+// ---------------------------------------------------------------------------
+export type MemoPriority = 'normal' | 'important' | 'urgent';
+export type MemoStatus = 'sent' | 'delivered' | 'under_review' | 'replied' | 'archived';
+
+export interface DepartmentCorrespondence {
+  id: string;
+  refNumber: string; // e.g. CRG-COR-2026/09-001
+  date: string; // ISO date YYYY-MM-DD
+  time: string; // HH:mm
+  senderDept: DepartmentRole | 'admin';
+  senderName: string;
+  senderTitle: string;
+  recipientDept: DepartmentRole | 'admin' | 'all';
+  subject: string;
+  body: string;
+  priority: MemoPriority;
+  status: MemoStatus;
+  attachments?: { name: string; size: string; type: string }[];
+  replies?: {
+    id: string;
+    senderDept: DepartmentRole | 'admin';
+    senderName: string;
+    date: string;
+    message: string;
+  }[];
+  history?: {
+    action: string;
+    timestamp: string;
+    actor: string;
+  }[];
+}
+
+// ---------------------------------------------------------------------------
+// General Managers & Staff Tables (جدول المديرين العموم والموظفين)
+// ---------------------------------------------------------------------------
+export interface GeneralManagerItem {
+  id: string;
+  code?: string;
+  name: string;
+  department: DepartmentRole;
+  title?: string;
+  phone: string;
+  whatsapp?: string;
+  email: string;
+  nationalId?: string;
+  appointmentDate?: string;
+  assignedDate?: string;
+  status: 'active' | 'leave' | 'suspended';
+  notes?: string;
+}
+
+export interface DepartmentEmployeeItem {
+  id: string;
+  code: string;
+  name: string;
+  department: DepartmentRole;
+  jobTitle?: string;
+  title?: string;
+  phone: string;
+  whatsapp?: string;
+  role?: 'surveyor' | 'engineer' | 'technician' | 'editor' | 'viewer' | string;
+  roleLevel?: 'field_engineer' | 'staff' | 'supervisor' | string;
+  status: 'active' | 'on_field' | 'inactive';
+  joinDate: string;
+  notes?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Dropdown Options Management (التحكم في القوائم المنسدلة)
+// ---------------------------------------------------------------------------
+export type DropdownCategory = 
+  | 'vehicle_types'
+  | 'site_statuses'
+  | 'fuel_partners'
+  | 'road_types'
+  | 'partnership_models'
+  | 'safety_categories'
+  | 'task_categories'
+  | 'licensing_authorities'
+  | 'pipeline_pressures'
+  | 'deed_types'
+  | 'governorates'
+  | 'site_types'
+  | 'compressor_capacities'
+  | string;
+
+export interface DropdownOptionItem {
+  id: string;
+  category: DropdownCategory;
+  value: string;
+  label: string;
+  description?: string;
+  badgeColor?: string;
+  isSystem?: boolean;
+  order?: number;
+  isEnabled?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Department Field Inspection (تنفيذ معاينة ميدانية تخصصية لكل إدارة)
+// ---------------------------------------------------------------------------
+export interface DepartmentFieldInspection {
+  id: string;
+  department: DepartmentRole;
+  siteName: string;
+  governorate: string;
+  district?: string;
+  address: string;
+  coordinates: { lat: number; lng: number };
+  inspectionDate: string;
+  inspectorName: string;
+  inspectorPhone: string;
+  overallEvaluation: 'compliant' | 'conditional' | 'non_compliant';
+  summaryNotes: string;
+  recommendations: string;
+  // Department-specific parameters
+  data: Record<string, any>;
+  photoUrls?: string[];
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Department Customization (تعديل أسماء الإدارات وإضافتها أو إزالتها)
+// ---------------------------------------------------------------------------
+export interface CustomDepartmentConfig {
+  id?: string;
+  key: string;
+  title: string;
+  shortName?: string;
+  subtitle?: string;
+  description?: string;
+  badge: string;
+  accentColor?: string;
+  iconName?: string;
+  defaultGmName?: string;
+  defaultGmPhone?: string;
+  order?: number;
+  isEnabled?: boolean;
+  isCustom?: boolean;
+  isActive?: boolean;
 }

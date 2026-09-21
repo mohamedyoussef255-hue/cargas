@@ -15,6 +15,7 @@ import { DepartmentWorkspaceView } from './components/DepartmentWorkspaceView';
 import { MarketingSurveyDispatcherModal } from './components/MarketingSurveyDispatcherModal';
 import { RequestFormChangeModal } from './components/RequestFormChangeModal';
 import { LandownerSurveyApplicationModal } from './components/LandownerSurveyApplicationModal';
+import { ClientLandownerSurveyPortal } from './components/ClientLandownerSurveyPortal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { DepartmentLoginModal } from './components/DepartmentLoginModal';
 import { CargasNgvLogo } from './components/CargasNgvLogo';
@@ -198,6 +199,28 @@ export default function App() {
   const [isChangeRequestModalOpen, setIsChangeRequestModalOpen] = useState<boolean>(false);
   const [isLandownerModalOpen, setIsLandownerModalOpen] = useState<boolean>(false);
 
+  // Client Landowner Self-Service Survey Portal (from WhatsApp direct link)
+  const isLandownerSurveyAction = urlParams?.get('action') === 'landowner_survey' || urlParams?.has('client_token');
+  const clientTokenFromUrl = urlParams?.get('client_token') || null;
+  const clientNameFromUrl = urlParams?.get('client_name') || undefined;
+  const clientPhoneFromUrl = urlParams?.get('client_phone') || undefined;
+
+  const [isClientPortalOpen, setIsClientPortalOpen] = useState<boolean>(() => Boolean(isLandownerSurveyAction));
+  const [clientPortalTargetApp, setClientPortalTargetApp] = useState<LandownerApplication | null>(() => {
+    if (clientTokenFromUrl) {
+      try {
+        const saved = localStorage.getItem('cng_landowner_apps_v1');
+        if (saved) {
+          const parsed: LandownerApplication[] = JSON.parse(saved);
+          const found = parsed.find(a => a.id === clientTokenFromUrl);
+          if (found) return found;
+        }
+      } catch {}
+      return DEFAULT_LANDOWNER_APPLICATIONS.find(a => a.id === clientTokenFromUrl) || null;
+    }
+    return null;
+  });
+
   // Landowner Site Inspection Applications State
   const [landownerApps, setLandownerApps] = useState<LandownerApplication[]>(() => {
     try {
@@ -206,6 +229,16 @@ export default function App() {
     } catch {}
     return DEFAULT_LANDOWNER_APPLICATIONS;
   });
+
+  const handleSaveClientLandownerApp = (updatedApp: LandownerApplication) => {
+    setLandownerApps(prev => {
+      const exists = prev.some(a => a.id === updatedApp.id);
+      if (exists) {
+        return prev.map(a => a.id === updatedApp.id ? updatedApp : a);
+      }
+      return [updatedApp, ...prev];
+    });
+  };
 
   // Mobile View Simulator State (for Map requirement: "لا تظهر بعد نشر التطبيق إلا على الموبايل")
   const [isMobilePreview, setIsMobilePreview] = useState<boolean>(false);
@@ -398,6 +431,28 @@ export default function App() {
     );
   }
 
+  // Standalone Client Landowner Survey Portal View (accessed via WhatsApp direct link or test preview)
+  if (isClientPortalOpen) {
+    return (
+      <ClientLandownerSurveyPortal
+        initialApp={clientPortalTargetApp}
+        clientPhoneFromUrl={clientPhoneFromUrl}
+        clientNameFromUrl={clientNameFromUrl}
+        onSaveApplication={(app) => {
+          handleSaveClientLandownerApp(app);
+          setClientPortalTargetApp(app);
+        }}
+        onClose={() => {
+          setIsClientPortalOpen(false);
+          // If came from WhatsApp direct client link without role, set role to marketing
+          if (!currentRole) {
+            setCurrentRole('marketing');
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white">
       
@@ -495,6 +550,7 @@ export default function App() {
             onResumeSession={handleResumeSession}
             onDeleteSession={handleDeleteSession}
             onStartNewSession={() => setIsNewSessionModalOpen(true)}
+            onUpdateSession={handleUpdateSession}
           />
         )}
 
@@ -568,6 +624,7 @@ export default function App() {
                 onUpdateSession={handleUpdateSession}
                 customFields={customFields}
                 onSubmitFormChangeRequest={(newReq) => setChangeRequests(prev => [newReq, ...prev])}
+                changeRequests={changeRequests}
                 onNavigateToAdmin={() => {
                   setAdminPreviewRole(null);
                   setCurrentRole('admin');
@@ -715,7 +772,7 @@ export default function App() {
         onSubmitRequest={(newReq) => setChangeRequests(prev => [newReq, ...prev])}
       />
 
-      {/* Landowner Survey Inspection Request Form & Applications Modal */}
+      {/* Landowner Survey Inspection Request Form & Applications Modal (Exclusively for Marketing) */}
       <LandownerSurveyApplicationModal
         isOpen={isLandownerModalOpen}
         onClose={() => setIsLandownerModalOpen(false)}
@@ -727,6 +784,11 @@ export default function App() {
         onDispatchSurveyor={(app) => {
           setIsLandownerModalOpen(false);
           setIsDispatcherModalOpen(true);
+        }}
+        onOpenClientSurveyPortal={(app) => {
+          setClientPortalTargetApp(app || null);
+          setIsLandownerModalOpen(false);
+          setIsClientPortalOpen(true);
         }}
         currentRole={effectiveRole || 'marketing'}
       />

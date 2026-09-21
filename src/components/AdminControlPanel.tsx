@@ -65,7 +65,11 @@ import { AdminActivityLogsManager } from './AdminActivityLogsManager';
 import { VideoArchiveModal } from './VideoArchiveModal';
 import { AdminProjectExecutionDashboard } from './AdminProjectExecutionDashboard';
 import { AdminProductionDataEditor } from './AdminProductionDataEditor';
-import { Key, Film, History, LayoutDashboard } from 'lucide-react';
+import { DepartmentCorrespondenceManager } from './DepartmentCorrespondenceManager';
+import { AdminStaffManager } from './AdminStaffManager';
+import { AdminDropdownOptionsManager } from './AdminDropdownOptionsManager';
+import { AdminDepartmentsManager } from './AdminDepartmentsManager';
+import { Key, Film, History, LayoutDashboard, Mail, Users, ListFilter } from 'lucide-react';
 
 interface AdminControlPanelProps {
   settings: PlatformMasterSettings;
@@ -86,7 +90,7 @@ interface AdminControlPanelProps {
   onUpdateChangeRequests?: (requests: FormChangeRequest[]) => void;
   onPreviewDepartment?: (dept: DepartmentRole) => void;
   onNavigateToPortal?: () => void;
-  initialTab?: 'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive';
+  initialTab?: 'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive' | 'correspondence' | 'staff' | 'dropdowns' | 'departments';
   selectedFormBuilderDept?: DepartmentRole;
 }
 
@@ -113,7 +117,7 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
   selectedFormBuilderDept,
 }) => {
   // Active Panel Tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive' | 'correspondence' | 'staff' | 'dropdowns' | 'departments'>(initialTab);
   const [currentFormBuilderDept, setCurrentFormBuilderDept] = useState<DepartmentRole>(selectedFormBuilderDept || 'operations');
 
   // Local draft states for easy editing and saving
@@ -626,6 +630,74 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
             </span>
           </button>
 
+          {/* Inter-departmental Correspondence Tab */}
+          <button
+            id="tab-correspondence"
+            onClick={() => setActiveTab('correspondence')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'correspondence'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40'
+                : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80'
+            }`}
+          >
+            <Mail className="w-4 h-4 text-blue-400" />
+            <span>سجل المراسلات والمخاطبات بين الإدارات</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+              مراسلات رسمية
+            </span>
+          </button>
+
+          {/* General Managers & Employees Staff Tab */}
+          <button
+            id="tab-staff"
+            onClick={() => setActiveTab('staff')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'staff'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/40'
+                : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80'
+            }`}
+          >
+            <Users className="w-4 h-4 text-amber-400" />
+            <span>جدول المديرين العموم والموظفين</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+              الكوادر البشرية
+            </span>
+          </button>
+
+          {/* Dynamic Dropdown Options Tab */}
+          <button
+            id="tab-dropdowns"
+            onClick={() => setActiveTab('dropdowns')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'dropdowns'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-2 ring-purple-400/40'
+                : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80'
+            }`}
+          >
+            <ListFilter className="w-4 h-4 text-purple-400" />
+            <span>التحكم في القوائم المنسدلة</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+              خيارات الاستمارات
+            </span>
+          </button>
+
+          {/* Department Customization & Management Tab */}
+          <button
+            id="tab-departments"
+            onClick={() => setActiveTab('departments')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'departments'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400/40'
+                : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-indigo-400" />
+            <span>تعديل وإضافة وحذف الإدارات</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">
+              هيكل الإدارات
+            </span>
+          </button>
+
           {/* Central Passwords & Direct Auth Tab */}
           <button
             id="tab-passwords"
@@ -829,6 +901,34 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
       {/* ============================================================== */}
       {activeTab === 'dashboard' && (
         <AdminProjectExecutionDashboard onPreviewDepartment={onPreviewDepartment} />
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB: INTER-DEPARTMENTAL CORRESPONDENCE & REGISTRY              */}
+      {/* ============================================================== */}
+      {activeTab === 'correspondence' && (
+        <DepartmentCorrespondenceManager currentDept="admin" isAdminView={true} />
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB: GENERAL MANAGERS & EMPLOYEES STAFF MANAGEMENT            */}
+      {/* ============================================================== */}
+      {activeTab === 'staff' && (
+        <AdminStaffManager />
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB: DYNAMIC DROPDOWN OPTIONS CONFIGURATION                   */}
+      {/* ============================================================== */}
+      {activeTab === 'dropdowns' && (
+        <AdminDropdownOptionsManager />
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB: DEPARTMENTS CRUD & RENAMING MANAGEMENT                   */}
+      {/* ============================================================== */}
+      {activeTab === 'departments' && (
+        <AdminDepartmentsManager />
       )}
 
       {/* ============================================================== */}

@@ -14,7 +14,10 @@ import {
   Eye, 
   CheckCircle2, 
   Search,
-  Plus
+  Plus,
+  Edit2,
+  Save,
+  X
 } from 'lucide-react';
 import { MonitoringSession, VEHICLE_TYPES, VehicleType } from '../types';
 import { CargasNgvLogo } from './CargasNgvLogo';
@@ -25,6 +28,7 @@ interface SessionsListProps {
   onResumeSession: (session: MonitoringSession) => void;
   onDeleteSession: (sessionId: string) => void;
   onStartNewSession: () => void;
+  onUpdateSession?: (session: MonitoringSession) => void;
 }
 
 export const SessionsList: React.FC<SessionsListProps> = ({
@@ -33,10 +37,69 @@ export const SessionsList: React.FC<SessionsListProps> = ({
   onResumeSession,
   onDeleteSession,
   onStartNewSession,
+  onUpdateSession,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGov, setSelectedGov] = useState<string>('all');
   const [inspectSession, setInspectSession] = useState<MonitoringSession | null>(null);
+
+  // Edit Session State (اسم الجلسة وبياناتها)
+  const [editingSession, setEditingSession] = useState<MonitoringSession | null>(null);
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editLocationName, setEditLocationName] = useState<string>('');
+  const [editGovernorate, setEditGovernorate] = useState<string>('');
+  const [editCity, setEditCity] = useState<string>('');
+  const [editSurveyor, setEditSurveyor] = useState<string>('');
+  const [editNearestStation, setEditNearestStation] = useState<string>('');
+  const [editPrivate, setEditPrivate] = useState<number>(0);
+  const [editMicrobus, setEditMicrobus] = useState<number>(0);
+  const [editTaxi, setEditTaxi] = useState<number>(0);
+  const [editVan, setEditVan] = useState<number>(0);
+  const [editPeugeot, setEditPeugeot] = useState<number>(0);
+  const [editStatus, setEditStatus] = useState<'active' | 'completed' | 'paused'>('completed');
+
+  const handleOpenEdit = (session: MonitoringSession) => {
+    setEditingSession(session);
+    setEditTitle(session.title);
+    setEditLocationName(session.locationName);
+    setEditGovernorate(session.governorate);
+    setEditCity(session.city);
+    setEditSurveyor(session.surveyorName || '');
+    setEditNearestStation(session.nearestStation || '');
+    setEditPrivate(session.counts.private || 0);
+    setEditMicrobus(session.counts.microbus || 0);
+    setEditTaxi(session.counts.taxi || 0);
+    setEditVan(session.counts.suzuki_van || 0);
+    setEditPeugeot(session.counts.peugeot_station || 0);
+    setEditStatus(session.status);
+  };
+
+  const handleSaveEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSession || !onUpdateSession) return;
+
+    const updatedSession: MonitoringSession = {
+      ...editingSession,
+      title: editTitle.trim() || editingSession.title,
+      locationName: editLocationName.trim() || editingSession.locationName,
+      governorate: editGovernorate.trim() || editingSession.governorate,
+      city: editCity.trim() || editingSession.city,
+      surveyorName: editSurveyor.trim() || editingSession.surveyorName,
+      nearestStation: editNearestStation.trim() || editingSession.nearestStation,
+      status: editStatus,
+      counts: {
+        ...editingSession.counts,
+        private: Number(editPrivate),
+        microbus: Number(editMicrobus),
+        taxi: Number(editTaxi),
+        suzuki_van: Number(editVan),
+        peugeot_station: Number(editPeugeot)
+      }
+    };
+
+    onUpdateSession(updatedSession);
+    setEditingSession(null);
+  };
 
   // Filter sessions
   const filteredSessions = sessions.filter((s) => {
@@ -270,11 +333,21 @@ export const SessionsList: React.FC<SessionsListProps> = ({
                     {/* View Details */}
                     <button
                       onClick={() => setInspectSession(session)}
-                      className="px-2.5 py-1.5 rounded-lg bg-slate-700/70 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1 transition-colors"
+                      className="px-2 py-1.5 rounded-lg bg-slate-700/70 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1 transition-colors"
                       title="عرض التقرير التفصيلي"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>عرض</span>
+                    </button>
+
+                    {/* Edit Session Name & Data */}
+                    <button
+                      onClick={() => handleOpenEdit(session)}
+                      className="px-2 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                      title="تعديل اسم الجلسة وبياناتها وأعداد المركبات"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-blue-400" />
+                      <span>تعديل</span>
                     </button>
 
                     {/* Export CSV */}
@@ -430,6 +503,203 @@ export const SessionsList: React.FC<SessionsListProps> = ({
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* Edit Session Name and Data Modal */}
+      {editingSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <form onSubmit={handleSaveEditSubmit} className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl p-5 sm:p-6 space-y-4 my-8 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-blue-400" />
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    تعديل اسم الجلسة وبياناتها
+                  </h3>
+                  <span className="font-mono text-xs text-blue-400 font-bold">
+                    كود الجلسة: {editingSession.code}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSession(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Session Title */}
+              <div>
+                <label className="text-slate-300 block mb-1 font-bold">اسم / عنوان الجلسة الرئيسي:</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white font-bold text-sm"
+                  placeholder="مثال: رصد محور المشير - التجمع الخامس..."
+                />
+              </div>
+
+              {/* Location & Region */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-slate-300 block mb-1 font-bold">الموقع التفصيلي:</label>
+                  <input
+                    type="text"
+                    required
+                    value={editLocationName}
+                    onChange={(e) => setEditLocationName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white font-medium"
+                    placeholder="اسم الشارع أو الميدان..."
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 block mb-1 font-bold">المحافظة:</label>
+                  <input
+                    type="text"
+                    required
+                    value={editGovernorate}
+                    onChange={(e) => setEditGovernorate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white font-medium"
+                    placeholder="القاهرة، الجيزة..."
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 block mb-1 font-bold">المدينة / الحي:</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCity}
+                    onChange={(e) => setEditCity(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white font-medium"
+                    placeholder="مدينة نصر، المعادي..."
+                  />
+                </div>
+              </div>
+
+              {/* Surveyor & Nearest Station */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 block mb-1 font-bold">مسؤول الرصد الميداني:</label>
+                  <input
+                    type="text"
+                    value={editSurveyor}
+                    onChange={(e) => setEditSurveyor(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white font-medium"
+                    placeholder="اسم المهندس / الفني..."
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 block mb-1 font-bold">أقرب محطة غاز طبيعي:</label>
+                  <input
+                    type="text"
+                    value={editNearestStation}
+                    onChange={(e) => setEditNearestStation(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-emerald-400 font-medium"
+                    placeholder="محطة كارجاس..."
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="text-slate-300 block mb-1 font-bold">حالة الجلسة:</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as 'active' | 'completed')}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white font-semibold"
+                >
+                  <option value="completed">مكتملة ومحفوظة (Completed)</option>
+                  <option value="active">جارية ونشطة الآن (Active)</option>
+                </select>
+              </div>
+
+              {/* Vehicle Counts Breakdown */}
+              <div className="pt-2 border-t border-slate-800">
+                <span className="text-slate-300 block mb-2 font-bold text-xs">
+                  أعداد وتصنيف المركبات المرصودة:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+                    <label className="text-blue-400 block text-[11px] font-bold mb-1">ملاكي:</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editPrivate}
+                      onChange={(e) => setEditPrivate(Number(e.target.value))}
+                      className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center"
+                    />
+                  </div>
+
+                  <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+                    <label className="text-emerald-400 block text-[11px] font-bold mb-1">ميكروباص:</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editMicrobus}
+                      onChange={(e) => setEditMicrobus(Number(e.target.value))}
+                      className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center"
+                    />
+                  </div>
+
+                  <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+                    <label className="text-amber-400 block text-[11px] font-bold mb-1">أجرة تاكسي:</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editTaxi}
+                      onChange={(e) => setEditTaxi(Number(e.target.value))}
+                      className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center"
+                    />
+                  </div>
+
+                  <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+                    <label className="text-purple-400 block text-[11px] font-bold mb-1">سوزوكي فان:</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editVan}
+                      onChange={(e) => setEditVan(Number(e.target.value))}
+                      className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center"
+                    />
+                  </div>
+
+                  <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+                    <label className="text-rose-400 block text-[11px] font-bold mb-1">بيجو ستيشن:</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editPeugeot}
+                      onChange={(e) => setEditPeugeot(Number(e.target.value))}
+                      className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingSession(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>حفظ التعديلات في الجلسة</span>
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

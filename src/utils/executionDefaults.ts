@@ -39,10 +39,10 @@ export const createDefaultStationExecutionData = (
       title: 'القواعد الخرسانية المسلحة للضاغط والمظلة والموزعات',
       description: 'صب قواعد الضاغط المعزولة ضد الاهتزازات مع حشو فواصل التمدد، وقواعد أعمدة المظلة المعدنية وممرات التموين',
       weightPercent: 12,
-      progressPercent: 95,
-      status: 'in_progress',
+      progressPercent: 88,
+      status: 'delayed',
       startDate: '2026-08-18',
-      targetEndDate: '2026-09-22',
+      targetEndDate: '2026-09-17',
       assignedEngineer: 'م. تامر مصطفى',
       contractorName: 'شركة النيل للإنشاءات الهندسية',
       estimatedCostEgp: 4200000,
@@ -53,7 +53,7 @@ export const createDefaultStationExecutionData = (
         { id: 'st-c2-3', title: 'معالجة وعزل القواعد بالبيتومين المطاطي', completed: true, completionDate: '2026-09-12' },
         { id: 'st-c2-4', title: 'تركيب خوابير التثبيت Anchor Bolts لجميع الآلات', completed: false },
       ],
-      notes: 'جاري فك الشدات ومعاينة مكعبات كسر الخرسانة بعمر 28 يوم'
+      notes: 'تأخر توريد خوابير التثبيت المستوردة؛ تجاوز الموعد المستهدف بأكثر من 48 ساعة دون تحديث الموقف'
     },
     {
       id: 'work-civ-3',
@@ -134,9 +134,9 @@ export const createDefaultStationExecutionData = (
       description: 'تركيب مصفوفة اسطوانات الغاز سعة 3000 لتر مياه ضغط 250 بار بنظام السحب الثلاثي (منخفض - متوسط - مرتفع)',
       weightPercent: 10,
       progressPercent: 75,
-      status: 'in_progress',
+      status: 'delayed',
       startDate: '2026-08-25',
-      targetEndDate: '2026-10-20',
+      targetEndDate: '2026-09-18',
       assignedEngineer: 'م. طارق عبد الخالق',
       contractorName: 'كارجاس لخدمات الغاز',
       estimatedCostEgp: 4800000,
@@ -147,7 +147,7 @@ export const createDefaultStationExecutionData = (
         { id: 'st-e2-3', title: 'تركيب صمامات الأمان Relief Valves ومحابس العزل', completed: false },
         { id: 'st-e2-4', title: 'إجراء اختبار النيتروجين للتأكد من عدم التسريب', completed: false },
       ],
-      notes: 'تم الانتهاء من تجميع البطارية وجاري ربط لوحة السحب الأوتوماتيكية Priority Panel'
+      notes: 'تأخر وصول صمامات الأمان Relief Valves ومحابس العزل؛ تجاوز الموعد المستهدف بأكثر من 48 ساعة دون تحديث'
     },
     {
       id: 'work-eq-3',
@@ -205,9 +205,9 @@ export const createDefaultStationExecutionData = (
       description: 'بناء حوائط خرسانية مسلحة بارتفاع 3.5 م وسمك 25 سم طبقاً للمعيار القياسي NFPA 52 والكود المصري لعزل منطقة الضغط العالي',
       weightPercent: 6,
       progressPercent: 90,
-      status: 'in_progress',
+      status: 'delayed',
       startDate: '2026-08-25',
-      targetEndDate: '2026-09-25',
+      targetEndDate: '2026-09-17',
       assignedEngineer: 'م. عصام فوزي (مدير السلامة)',
       contractorName: 'شركة النيل للإنشاءات الهندسية',
       estimatedCostEgp: 1900000,
@@ -217,7 +217,7 @@ export const createDefaultStationExecutionData = (
         { id: 'st-h1-2', title: 'صب الحوائط الخرسانية الثلاثية حول مجمع الضاغط', completed: true, completionDate: '2026-09-10' },
         { id: 'st-h1-3', title: 'دهان الحوائط بدهانات عاكسة ومقاومة للحرارة', completed: false },
       ],
-      notes: 'تمت مطابقة حوائط الصد مع اشتراطات الدفاع المدني ومتبقي الدهانات التحذيرية'
+      notes: 'تأخر استلام دهانات الحوائط العاكسة والمقاومة للحريق؛ تجاوز الموعد المحدد بأكثر من 48 ساعة دون تحديث الموقف'
     },
     {
       id: 'work-hse-2',

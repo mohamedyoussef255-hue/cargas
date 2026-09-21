@@ -18,7 +18,9 @@ import {
   Sparkles,
   ShieldCheck,
   Compass,
-  ArrowRight
+  ArrowRight,
+  Copy,
+  Check
 } from 'lucide-react';
 import { LandownerApplication, DepartmentRole } from '../types';
 
@@ -29,6 +31,7 @@ interface LandownerSurveyApplicationModalProps {
   onAddApplication: (app: LandownerApplication) => void;
   onUpdateApplicationStatus: (id: string, newStatus: LandownerApplication['status'], score?: number) => void;
   onDispatchSurveyor?: (app: LandownerApplication) => void;
+  onOpenClientSurveyPortal?: (app?: LandownerApplication) => void;
   currentRole?: DepartmentRole;
 }
 
@@ -39,6 +42,7 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
   onAddApplication,
   onUpdateApplicationStatus,
   onDispatchSurveyor,
+  onOpenClientSurveyPortal,
   currentRole = 'marketing',
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'new_form'>('list');
@@ -46,6 +50,7 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
   const [filterGov, setFilterGov] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedApp, setSelectedApp] = useState<LandownerApplication | null>(null);
+  const [copiedAppId, setCopiedAppId] = useState<string | null>(null);
 
   // New Application Form State
   const [ownerName, setOwnerName] = useState('');
@@ -138,6 +143,13 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
 
   const getStatusBadge = (status: LandownerApplication['status']) => {
     switch (status) {
+      case 'client_submitted':
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span>مستوفى ومحدث من العميل عبر الواتساب</span>
+          </span>
+        );
       case 'approved_marketing':
         return <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">معتمد تسويقياً للإنشاء</span>;
       case 'surveyor_dispatched':
@@ -149,6 +161,31 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
       default:
         return <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">قيد الفحص والمراجعة المبدئية</span>;
     }
+  };
+
+  const getClientSurveyUrl = (appId: string, name: string, phone: string) => {
+    const origin = window.location.origin;
+    const path = window.location.pathname;
+    return `${origin}${path}?action=landowner_survey&client_token=${appId}&client_name=${encodeURIComponent(name)}&client_phone=${encodeURIComponent(phone)}`;
+  };
+
+  const generateClientSelfServiceWhatsAppUrl = (app: LandownerApplication) => {
+    const link = getClientSurveyUrl(app.id, app.ownerName, app.phoneNumber);
+    const text = `السيد الفاضل / ${app.ownerName} المحترم 🌿
+تحيات إدارة التسويق وتطوير الأعمال بشركة الغاز الطبيعي للسيارات (كارجاس - CARGAS).
+
+بناءً على طلبكم الكريم ورغبتكم في إقامة / إضافة محطة تموين غاز طبيعي كارجاس بموقعكم الكائن في:
+📍 ${app.fullAddress || 'موقعكم الموقر'}
+
+يُرجى التكرم بالضغط على الرابط التالي لتعبئة وتدقيق بيانات الموقع، والمساحة والإحداثيات، واختيار موعد المعاينة المفضل:
+🔗 ${link}
+
+📌 بمجرد إرسال النموذج، سيتم تسجيل وتحديث بيانات الموقع فورياً لدى إدارة التسويق للبدء في المعاينة الفنية.
+الخط الساخن: 19544 | شركة كارجاس`;
+
+    const cleanNumber = (app.whatsappNumber || app.phoneNumber).replace(/\s+/g, '');
+    const formattedNumber = cleanNumber.startsWith('0') ? '2' + cleanNumber : cleanNumber;
+    return `https://wa.me/${formattedNumber}?text=${encodeURIComponent(text)}`;
   };
 
   const generateWhatsAppMessage = (app: LandownerApplication) => {
@@ -186,6 +223,18 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
           </div>
 
           <div className="flex items-center gap-2">
+            {onOpenClientSurveyPortal && (
+              <button
+                onClick={() => onOpenClientSurveyPortal()}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 cursor-pointer shadow-sm"
+                title="فتح وتجربة استمارة العميل التفاعلية لإرسالها بالواتساب"
+              >
+                <Share2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">إرسال استمارة لعميل بالواتساب</span>
+                <span className="sm:hidden">استمارة عميل</span>
+              </button>
+            )}
+
             <button
               onClick={() => setViewMode(viewMode === 'list' ? 'new_form' : 'list')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -202,7 +251,7 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
               ) : (
                 <>
                   <Plus className="w-3.5 h-3.5" />
-                  <span>تسجيل طلب معاينة جديد</span>
+                  <span>تسجيل طلب يدوي جديد</span>
                 </>
               )}
             </button>
@@ -552,6 +601,7 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
                   className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
                 >
                   <option value="all">كافة الحالات</option>
+                  <option value="client_submitted">مستوفى من العميل عبر الواتساب</option>
                   <option value="pending_review">قيد الفحص</option>
                   <option value="surveyor_dispatched">تم تكليف معاين</option>
                   <option value="approved_marketing">معتمد تسويقياً</option>
@@ -624,7 +674,34 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
                         </div>
                       </div>
 
-                      {app.notes && (
+                      {/* Client Self-Service Submission Banner if filled via WhatsApp */}
+                      {app.filledByClient && (
+                        <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-inner">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                            <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>
+                              <strong>تم استيفاء وتحديث البيانات من العميل عبر الواتساب:</strong>{' '}
+                              <span className="font-mono text-cyan-300">
+                                {app.clientSubmittedAt ? new Date(app.clientSubmittedAt).toLocaleString('ar-EG') : 'مؤخراً'}
+                              </span>
+                            </span>
+                          </div>
+                          {app.preferredSurveyDate && (
+                            <span className="text-[11px] bg-slate-900 px-2.5 py-0.5 rounded-lg text-amber-300 font-bold border border-amber-500/30">
+                              موعد المعاينة المفضل: {app.preferredSurveyDate}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {app.clientUpdateNotes && (
+                        <p className="text-[11px] text-cyan-300 bg-cyan-950/30 p-2 rounded-lg border border-cyan-800/40">
+                          <strong className="text-cyan-200">ملاحظات العميل المحدثة: </strong> {app.clientUpdateNotes}
+                        </p>
+                      )}
+
+                      {app.notes && !app.clientUpdateNotes && (
                         <p className="text-[11px] text-slate-400 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
                           <strong className="text-slate-300">ملاحظات الموقع: </strong> {app.notes}
                         </p>
@@ -632,33 +709,74 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
 
                       {/* Actions */}
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-700/60">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {/* 1. Send form to client via WhatsApp */}
                           <a
-                            href={`https://wa.me/${app.whatsappNumber}?text=${generateWhatsAppMessage(app)}`}
+                            href={generateClientSelfServiceWhatsAppUrl(app)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/50 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+                            title="إرسال رابط الاستمارة المباشر لمالك الموقع عبر الواتساب لملئها وإرجاعها"
                           >
-                            <Share2 className="w-3 h-3" />
-                            <span>مراسلة المالك واتساب</span>
+                            <Share2 className="w-3 h-3 text-emerald-400" />
+                            <span>إرسال الاستمارة للعميل بالواتساب</span>
                           </a>
+
+                          {/* 2. Copy Client Direct Link */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const link = getClientSurveyUrl(app.id, app.ownerName, app.phoneNumber);
+                              navigator.clipboard.writeText(link);
+                              setCopiedAppId(app.id);
+                              setTimeout(() => setCopiedAppId(null), 2000);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="نسخ رابط استمارة العميل"
+                          >
+                            {copiedAppId === app.id ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-300">تم النسخ!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>نسخ الرابط</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* 3. Preview/Fill as Client (interactive simulation) */}
+                          {onOpenClientSurveyPortal && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenClientSurveyPortal(app)}
+                              className="px-2 py-1 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-500/40 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              title="معاينة استمارة العميل وتجربة التعبئة نيابة عنه"
+                            >
+                              <Sparkles className="w-3 h-3 text-cyan-400" />
+                              <span>تعبئة كعميل</span>
+                            </button>
+                          )}
 
                           <a
                             href={`tel:${app.phoneNumber}`}
-                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <Phone className="w-3 h-3 text-indigo-400" />
-                            <span>اتصال هاتفي</span>
+                            <span>اتصال</span>
                           </a>
                         </div>
 
                         {/* Status update controls for Marketing & Admin */}
                         <div className="flex items-center gap-1.5">
-                          {app.status === 'pending_review' && (
+                          {(app.status === 'pending_review' || app.status === 'client_submitted') && (
                             <>
                               <button
                                 onClick={() => onUpdateApplicationStatus(app.id, 'surveyor_dispatched')}
                                 className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+                                title="تكليف مهندس مساح ميداني للمعاينة على الطبيعة"
                               >
                                 <Compass className="w-3 h-3" />
                                 <span>تكليف مساح ميداني</span>
@@ -667,9 +785,10 @@ export const LandownerSurveyApplicationModal: React.FC<LandownerSurveyApplicatio
                               <button
                                 onClick={() => onUpdateApplicationStatus(app.id, 'approved_marketing', 92)}
                                 className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+                                title="اعتماد الموقع تسويقياً وجدولته"
                               >
                                 <CheckCircle2 className="w-3 h-3" />
-                                <span>اعتماد مبدئي</span>
+                                <span>اعتماد تسويقي</span>
                               </button>
                             </>
                           )}

@@ -788,7 +788,7 @@ export const INITIAL_FORM_CHANGE_REQUESTS: FormChangeRequest[] = [
     justification: 'مهم جداً لحساب مواعيد الصيانة الوقائية وتبديل فلاتر الزيت والغاز ووصلات الضغط العالي',
     proposedSection: 'بيانات المعدات والآلات',
     status: 'pending',
-    submittedAt: '2026-03-15 11:30'
+    submittedAt: '2026-09-16 11:30'
   },
   {
     id: 'req-2',
@@ -802,6 +802,90 @@ export const INITIAL_FORM_CHANGE_REQUESTS: FormChangeRequest[] = [
     justification: 'لتقدير حجم سيارات الأجرة اليومية الراغبة في التحويل والتموين بالغاز',
     proposedSection: 'الدراسة الميدانية والطلب',
     status: 'pending',
-    submittedAt: '2026-03-16 09:15'
+    submittedAt: '2026-09-16 09:15'
+  },
+  {
+    id: 'req-proj-1',
+    department: 'projects',
+    departmentName: 'إدارة المشروعات والإنشاءات الهندسية',
+    requesterName: 'م. تامر مصطفى (مدير المشروعات الميدانية)',
+    requestType: 'add_field',
+    fieldLabel: 'منسوب المياه الجوفية وعمق الجسات الاستكشافية (Water Table Level & Boring Depth)',
+    fieldType: 'number',
+    fieldKey: 'groundwaterTableDepthMeters',
+    justification: 'ضروري لتحديد مواصفات عزل القواعد الخرسانية ونوع الأسمنت المقاوم للكبريتات SRC',
+    proposedSection: 'الرفع المساحي ومواصفات الأرض',
+    status: 'pending',
+    submittedAt: '2026-09-15 10:30'
+  },
+  {
+    id: 'req-hse-1',
+    department: 'hse',
+    departmentName: 'إدارة السلامة والصحة المهنية (HSE)',
+    requesterName: 'م. عصام فوزي (مدير السلامة والأمن الصناعي)',
+    requestType: 'add_field',
+    fieldLabel: 'المسافة الآمنة من حوائط الصد إلى خطوط الكهرباء (Overhead Powerlines Clearance)',
+    fieldType: 'number',
+    fieldKey: 'overheadPowerlinesClearanceMeters',
+    justification: 'اشتراط ملزم من كود NFPA 52 والدفاع المدني لضمان مسافات التفريغ الكهربائي الآمن',
+    proposedSection: 'اشتراطات السلامة والأمن الصناعي',
+    status: 'pending',
+    submittedAt: '2026-09-16 14:00'
+  },
+  {
+    id: 'req-tech-1',
+    department: 'technical',
+    departmentName: 'إدارة الغاز الطبيعي والشبكات',
+    requesterName: 'م. عبد الرحمن النجار (مهندس أول شبكات الغاز)',
+    requestType: 'add_field',
+    fieldLabel: 'أقصى سعة استيعابية متاحة لنقطة التغذية بالشبكة القومية (Nm³/h Capacity)',
+    fieldType: 'number',
+    fieldKey: 'gridInletAvailableCapacity',
+    justification: 'للتأكد من قدرة خط الغاز المغذي على تغذية ضواغط كارجاس المستقبلية بدون هبوط في الضغط',
+    proposedSection: 'شبكة الغاز الطبيعي والربط الفني',
+    status: 'pending',
+    submittedAt: '2026-09-17 08:30'
+  },
+  {
+    id: 'req-lic-1',
+    department: 'licensing',
+    departmentName: 'إدارة التراخيص والموافقات الحكومية',
+    requesterName: 'أ. طارق عبد الرازق (مدير التراخيص والمتابعة)',
+    requestType: 'add_field',
+    fieldLabel: 'رقم وتاريخ محضر معاينة الدفاع المدني المبدئي',
+    fieldType: 'text',
+    fieldKey: 'civilDefensePreliminaryInspectionNo',
+    justification: 'لتسريع وتيرة استخراج رخصة التشغيل المؤقتة وضمان أرشفة رقم المحضر بدقة',
+    proposedSection: 'الموافقات والتراخيص الحكومية',
+    status: 'pending',
+    submittedAt: '2026-09-17 11:45'
+  },
+  {
+    id: 'req-leg-1',
+    department: 'legal',
+    departmentName: 'الإدارة القانونية والتعاقدات',
+    requesterName: 'المستشار حازم الجمال (المستشار القانوني)',
+    requestType: 'add_field',
+    fieldLabel: 'رقم قيد الشهر العقاري لسند ملكية / إيجار الأرض',
+    fieldType: 'text',
+    fieldKey: 'notaryRegistrationFileNumber',
+    justification: 'لإثبات الوضع القانوني النهائي للأرض قبل بدء ضخ استثمارات الإنشاءات',
+    proposedSection: 'المستندات القانونية وسند الملكية',
+    status: 'pending',
+    submittedAt: '2026-09-18 10:15'
+  },
+  {
+    id: 'req-fin-1',
+    department: 'financial',
+    departmentName: 'الإدارة المالية ودراسات الجدوى',
+    requesterName: 'أ. هاني سليم (مدير الإدارة المالية للمشروعات)',
+    requestType: 'add_field',
+    fieldLabel: 'القيمة التقديرية لرسوم مقايسة شركة الكهرباء (KVA Connection Fee)',
+    fieldType: 'number',
+    fieldKey: 'electricityGridConnectionEstimatedEgp',
+    justification: 'لإدراجها بدقة ضمن بنود الموازنة الرأسمالية CAPEX قبل طرح مناقصة المقاولين',
+    proposedSection: 'الجدوى والمؤشرات المالية',
+    status: 'pending',
+    submittedAt: '2026-09-18 13:30'
   }
 ];

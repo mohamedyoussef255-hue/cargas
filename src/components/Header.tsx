@@ -22,7 +22,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   FileText,
-  Home
+  Home,
+  Bell
 } from 'lucide-react';
 import { MonitoringSession, DepartmentRole, ActiveTabType } from '../types';
 export type { ActiveTabType };
@@ -46,6 +47,8 @@ interface HeaderProps {
   userName?: string | null;
   isDirectLink?: boolean;
   onOpenLandownerApplications?: () => void;
+  onOpenInAppNotifications?: () => void;
+  unreadInAppCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -66,6 +69,8 @@ export const Header: React.FC<HeaderProps> = ({
   userName,
   isDirectLink = false,
   onOpenLandownerApplications,
+  onOpenInAppNotifications,
+  unreadInAppCount = 0,
 }) => {
   const effectiveRole = currentRole || 'admin';
   const roleMeta = DEPARTMENTS_METADATA[effectiveRole] || DEPARTMENTS_METADATA.admin;
@@ -179,6 +184,28 @@ export const Header: React.FC<HeaderProps> = ({
                 <Users className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">دعوة موظفيك ومهندسيك</span>
                 <Share2 className="w-3 h-3 text-emerald-200" />
+              </button>
+            )}
+
+            {/* In-App Messaging & Audio Ringtone System */}
+            {onOpenInAppNotifications && (
+              <button
+                id="btn-header-inapp-notifications"
+                onClick={onOpenInAppNotifications}
+                title="منظومة الإرسال الداخلي والإشعارات والرنين الصوتي"
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow cursor-pointer ${
+                  unreadInAppCount > 0
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-400 shadow-indigo-600/30'
+                    : 'bg-slate-900/80 border-slate-700 hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <Bell className={`w-3.5 h-3.5 ${unreadInAppCount > 0 ? 'text-amber-300 animate-bounce' : 'text-slate-400'}`} />
+                <span className="hidden md:inline">الرسائل والرنين</span>
+                {unreadInAppCount > 0 && (
+                  <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white font-black text-[10px]">
+                    {unreadInAppCount}
+                  </span>
+                )}
               </button>
             )}
 

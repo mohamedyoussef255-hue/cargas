@@ -244,6 +244,7 @@ export interface MonitoringSession {
   recordedVideoUrl?: string;
   videoDurationSeconds?: number;
   sessionSnapshotThumbnails?: string[];
+  photos?: string[];
   // Dedicated Marketing Sessions (4 specific types) & Inter-Department Consensus
   surveyCategory?: MarketingSessionCategory;
   surveyPeriods?: SurveyTimePeriodItem[];

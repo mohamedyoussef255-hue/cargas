@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { DepartmentRole, CustomFormField, DepartmentInvitationItem } from '../types';
 import { DEPARTMENTS_METADATA, DEPARTMENT_ROLE_SPECS } from '../data/departmentCustomFields';
+import { sendInAppNotification } from '../utils/inAppMessagingService';
 
 interface AdminInvitationsManagerProps {
   customFields: CustomFormField[];
@@ -166,6 +167,51 @@ export const AdminInvitationsManager: React.FC<AdminInvitationsManagerProps> = (
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     window.open(waUrl, '_blank');
+    setActiveModalDept(null);
+  };
+
+  const handleSendInternal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeModalDept) return;
+
+    const meta = DEPARTMENTS_METADATA[activeModalDept];
+    const spec = DEPARTMENT_ROLE_SPECS[activeModalDept];
+    const directUrl = getDepartmentLink(activeModalDept, userRoleType === 'general_manager' ? 'gm' : 'staff', recipientName);
+
+    const newInvite: DepartmentInvitationItem = {
+      id: 'inv-' + Date.now(),
+      department: activeModalDept,
+      departmentName: meta.title,
+      recipientName: recipientName.trim() || spec.gmTitle,
+      recipientPhone: recipientPhone || 'غير محدد',
+      userType: userRoleType,
+      roleTitle: userRoleType === 'general_manager' ? spec.gmTitle : 'مهندس / موظف بالإدارة',
+      directUrl,
+      sentAt: new Date().toISOString(),
+      sentBy: 'مدير النظام (Super Admin)',
+      notes: invitationNote,
+    };
+
+    const updated = [newInvite, ...sentInvitations];
+    setSentInvitations(updated);
+    try {
+      localStorage.setItem('cargas_gm_invitations', JSON.stringify(updated));
+    } catch {}
+
+    sendInAppNotification({
+      senderRole: 'admin',
+      senderName: 'إدارة النظام والتحكم',
+      recipientRole: activeModalDept,
+      recipientName: recipientName.trim() || spec.gmTitle,
+      title: `دعوة دخول واعتماد إداري: ${meta.title}`,
+      body: `السيد / ${recipientName.trim() || spec.gmTitle} المحترم،\nتم إصدار رابط الدخول والتحكم المباشر لقطاعكم [${meta.title}] بصلاحية [${userRoleType === 'general_manager' ? spec.gmTitle : 'موظف بالإدارة'}].\nالرابط المباشر: ${directUrl}`,
+      category: 'team_invite',
+      priority: 'urgent',
+      actionUrl: directUrl,
+      actionLabel: 'دخول المنظومة'
+    });
+
+    alert(`تم بنجاح إرسال الدعوة داخلياً إلى [${recipientName.trim() || spec.gmTitle}] مع تشغيل نغمة الرنين دون الحاجة لتطبيق خارجي!`);
     setActiveModalDept(null);
   };
 
@@ -598,20 +644,28 @@ export const AdminInvitationsManager: React.FC<AdminInvitationsManagerProps> = (
                   <span>معاينة الشاشة أولاً</span>
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setActiveModalDept(null)}
-                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors cursor-pointer"
+                    className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors cursor-pointer text-xs"
                   >
                     إلغاء
                   </button>
                   <button
-                    type="submit"
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer"
+                    type="button"
+                    onClick={handleSendInternal}
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/30 cursor-pointer text-xs"
                   >
-                    <Send className="w-4 h-4" />
-                    <span>إرسال الدعوة عبر واتساب الآن</span>
+                    <Send className="w-4 h-4 text-indigo-200" />
+                    <span>إرسال دعوة داخلية (مع رنين 🔔)</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer text-xs"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>إرسال عبر الواتساب</span>
                   </button>
                 </div>
               </div>

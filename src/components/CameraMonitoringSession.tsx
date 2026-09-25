@@ -29,6 +29,7 @@ import {
 import { MonitoringSession, VehicleType, VEHICLE_TYPES, DetectionRecord } from '../types';
 import { playVehicleBeep } from '../utils/audio';
 import { CargasNgvLogo } from './CargasNgvLogo';
+import { TrafficRadarScannerOverlay } from './TrafficRadarScannerOverlay';
 
 interface CameraMonitoringSessionProps {
   session: MonitoringSession | null;
@@ -64,6 +65,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
   const [isCameraPaused, setIsCameraPaused] = useState<boolean>(false);
   const [showSwitchSessionModal, setShowSwitchSessionModal] = useState<boolean>(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [isSimulatedRadar, setIsSimulatedRadar] = useState<boolean>(false);
 
   // AI Automatic Recognition States
   const [isAiScanning, setIsAiScanning] = useState<boolean>(true);
@@ -185,19 +187,50 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
         stream.getTracks().forEach(track => track.stop());
       }
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: facing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("المتصفح أو بيئة العرض الحالية لا تدعم استدعاء الكاميرا مباشرة (تتطلب HTTPS أو تصريح كامل).");
+      }
+
+      let mediaStream: MediaStream | null = null;
+      try {
+        // Attempt with ideal resolution & facingMode
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch (err1) {
+        console.warn("First camera attempt failed, trying basic facingMode constraint:", err1);
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: facing },
+            audio: false,
+          });
+        } catch (err2) {
+          console.warn("Second camera attempt failed, trying fallback video: true:", err2);
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        }
+      }
+
+      if (!mediaStream) {
+        throw new Error("تعذر إنشاء مجرى بث الكاميرا");
+      }
 
       setStream(mediaStream);
+      setCameraError(null);
+      setIsSimulatedRadar(false);
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.warn("Video play error:", e));
+        };
       }
 
       // Check for torch capability
@@ -210,6 +243,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
       console.warn("Camera access failed:", err);
       const errMsg = err instanceof Error ? err.message : "تعذر تشغيل الكاميرا";
       setCameraError(errMsg);
+      setIsSimulatedRadar(true);
     }
   }, [stream]);
 
@@ -935,56 +969,49 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
               </div>
             )}
 
-            {/* If camera error or inactive */}
-            {cameraError && (
+            {/* If camera error and NOT in simulated mode */}
+            {cameraError && !isSimulatedRadar && (
               <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20">
                 <CameraOff className="w-12 h-12 text-rose-400 mb-3" />
                 <h3 className="text-white font-bold text-base mb-1">
                   تعذر الوصول إلى كاميرا الموبايل
                 </h3>
                 <p className="text-slate-400 text-xs max-w-sm mb-4">
-                  {cameraError}. يرجى التأكد من منح الإذن للكاميرا أو استخدام أزرار الرصد اليدوية السريعة بالأسفل.
+                  {cameraError}. يمكنك تشغيل وضع المحاكاة الرادارية الذكية لاختبار الرصد التلقائي وحصر المركبات فوراً.
                 </p>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => startCamera(facingMode)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+                    onClick={() => {
+                      setCameraError(null);
+                      setIsSimulatedRadar(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-emerald-600/30"
                   >
-                    إعادة محاولة الاتصال بالكاميرا
+                    تشغيل محاكاة رادار المرور الذكي
                   </button>
                   <button
-                    onClick={() => setCameraError(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                    onClick={() => startCamera(facingMode)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer"
                   >
-                    استمرار بوضع المحاكاة الميدانية
+                    إعادة محاولة الكاميرا
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Interactive Detection Zone Overlay / Grid */}
-            <div className="absolute inset-0 pointer-events-none z-10">
-              
-              {/* Corner targeting brackets */}
-              <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-emerald-400/80"></div>
-              <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-emerald-400/80"></div>
-              <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-emerald-400/80"></div>
-              <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-emerald-400/80"></div>
-
-              {/* Scanning line for AI scanner */}
-              {isAiScanning && (
-                <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#10b981] animate-scanline"></div>
-              )}
-
-              {/* Center Virtual Tripwire Line */}
-              <div className="absolute top-1/2 inset-x-0 -translate-y-1/2 flex items-center justify-between px-6 border-b border-dashed border-emerald-500/40">
-                <span className="text-[10px] text-emerald-400/80 bg-black/60 px-2 py-0.5 rounded font-mono">
-                  خط بوابة الرصد الميداني
-                </span>
-                <span className="text-[10px] text-emerald-400/80 bg-black/60 px-2 py-0.5 rounded font-mono">
-                  DETECTION LINE
-                </span>
-              </div>
+            {/* Smart Traffic Radar Overlay (HUD + Simulation Stream) */}
+            <TrafficRadarScannerOverlay
+              isSimulated={isSimulatedRadar}
+              onToggleSimulated={(sim) => setIsSimulatedRadar(sim)}
+              isSoundEnabled={isSoundEnabled}
+              onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
+              isScanning={isAiScanning && session.status === 'active'}
+              onVehicleDetected={(type, conf, desc) => {
+                handleAddVehicle(type, 'camera_ai', conf, desc);
+              }}
+              hourlyFlowRate={elapsedSeconds > 0 ? Math.round((Object.values(session.counts).reduce((a, b) => a + b, 0) / elapsedSeconds) * 3600) : 380}
+              totalVehicles={Object.values(session.counts).reduce((a, b) => a + b, 0)}
+            />
 
               {/* AI Detection Banner Overlay */}
               {lastAiDetection && (
@@ -1023,7 +1050,6 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
                   </span>
                 )}
               </div>
-            </div>
 
             {/* Camera Floating Controls */}
             <div className="absolute top-3 left-3 z-20 flex items-center gap-2">

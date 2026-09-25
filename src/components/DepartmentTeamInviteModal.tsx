@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { DepartmentRole, DepartmentTeamMemberInvite } from '../types';
 import { DEPARTMENTS_METADATA, DEPARTMENT_ROLE_SPECS } from '../data/departmentCustomFields';
+import { sendInAppNotification } from '../utils/inAppMessagingService';
 
 interface DepartmentTeamInviteModalProps {
   isOpen: boolean;
@@ -117,6 +118,45 @@ export const DepartmentTeamInviteModal: React.FC<DepartmentTeamInviteModalProps>
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     window.open(waUrl, '_blank');
+    onClose();
+  };
+
+  const handleSendInternal = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const cleanName = memberName.trim() || 'مهندس / إداري بالقسم';
+    const newMember: DepartmentTeamMemberInvite = {
+      id: 'team-' + Date.now(),
+      department,
+      memberName: cleanName,
+      memberPhone: memberPhone || 'غير محدد',
+      memberRole: effectiveRole,
+      directUrl: directLink,
+      invitedAt: new Date().toISOString(),
+      invitedBy: spec.gmTitle,
+    };
+
+    const updated = [newMember, ...invitedTeam];
+    setInvitedTeam(updated);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch {}
+
+    // Send direct in-app notification with ringtone
+    sendInAppNotification({
+      senderRole: department,
+      senderName: spec.gmTitle,
+      recipientRole: department,
+      recipientName: cleanName,
+      title: `دعوة انضمام وتكليف: ${meta.title}`,
+      body: `السيد الزميل / ${cleanName} المحترم (${effectiveRole})،\nيدعوكم ${spec.gmTitle} للانضمام لصفحة العمل والمتابعة الميدانية لإدارة [${meta.title}].\nالرابط المباشر لمنظومتك: ${directLink}`,
+      category: 'team_invite',
+      priority: 'urgent',
+      actionUrl: directLink,
+      actionLabel: 'دخول صفحة العمل'
+    });
+
+    alert(`تم بنجاح إرسال الدعوة داخلياً إلى [${cleanName}] مع إطلاق نغمة الرنين دون الحاجة لتطبيق خارجي!`);
     onClose();
   };
 
@@ -258,19 +298,27 @@ export const DepartmentTeamInviteModal: React.FC<DepartmentTeamInviteModalProps>
               <span>{isCopied ? 'تم نسخ الرابط' : 'نسخ الرابط فقط'}</span>
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors cursor-pointer"
+                className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors cursor-pointer text-xs"
               >
                 إغلاق
               </button>
               <button
-                type="submit"
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer"
+                type="button"
+                onClick={handleSendInternal}
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-600/30 cursor-pointer text-xs"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-4 h-4 text-indigo-200" />
+                <span>إرسال دعوة داخلية (مع رنين 🔔)</span>
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer text-xs"
+              >
+                <MessageSquare className="w-4 h-4" />
                 <span>إرسال عبر الواتساب</span>
               </button>
             </div>

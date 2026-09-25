@@ -19,6 +19,7 @@ import {
 import { DepartmentRole, PeriodicTaskItem, TaskRecurrenceFrequency, TaskExecutionStatus } from '../types';
 import { DEPARTMENTS_METADATA } from '../data/departmentCustomFields';
 import { INITIAL_PERIODIC_TASKS } from '../data/departmentPeriodicTasksData';
+import { sendInAppNotification } from '../utils/inAppMessagingService';
 
 export function loadDepartmentTasks(): PeriodicTaskItem[] {
   try {
@@ -138,6 +139,23 @@ export const DepartmentPeriodicTasksScheduler: React.FC<DepartmentPeriodicTasksS
     setNewTaskCategory('');
     setNewTaskAssignedTo('');
     setNewTaskAssignedPhone('');
+  };
+
+  // Direct In-App Task Dispatch with Audio Ringtone
+  const handleDispatchInternal = (task: PeriodicTaskItem) => {
+    sendInAppNotification({
+      senderRole: department,
+      senderName: `إدارة ${meta.title}`,
+      recipientRole: department,
+      recipientName: task.assignedTo || 'مسؤول المهمة',
+      title: `تكليف دوري: ${task.title} (${task.frequencyLabel})`,
+      body: `تكليف للأستاذ/المهندس ${task.assignedTo}: يرجى تنفيذ المهمة الدورية [${task.title}].\nالتصنيف: ${task.category}\nالموعد النهائي: ${task.dueDate}\nالأولوية: ${task.priority === 'high' ? 'عالية ومستعجلة' : 'عادية'}\nالتفاصيل: ${task.description}`,
+      category: 'assignment',
+      priority: task.priority === 'high' ? 'critical' : 'urgent',
+      actionLabel: 'استعراض المهام'
+    });
+
+    alert(`تم بنجاح إرسال تكليف المهمة داخلياً إلى [${task.assignedTo}] مع إطلاق نغمة الرنين دون الحاجة لتطبيق خارجي!`);
   };
 
   // WhatsApp Task Dispatch
@@ -364,13 +382,22 @@ export const DepartmentPeriodicTasksScheduler: React.FC<DepartmentPeriodicTasksS
                   </div>
 
                   {/* Right: Actions */}
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      onClick={() => handleDispatchInternal(task)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600/25 hover:bg-indigo-600/35 text-indigo-300 border border-indigo-500/40 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105"
+                      title="إرسال تكليف داخلي فوري في المنظومة مع رنين وتنبيه"
+                    >
+                      <Send className="w-3 h-3 text-indigo-400" />
+                      <span>إرسال داخلي (رنين 🔔)</span>
+                    </button>
+
                     <button
                       onClick={() => handleDispatchWhatsApp(task)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105"
                       title="إرسال تفاصيل المهمة للمسؤول عبر الواتساب"
                     >
-                      <Send className="w-3 h-3 text-emerald-400" />
+                      <MessageSquare className="w-3 h-3 text-emerald-400" />
                       <span>إرسال بالواتساب</span>
                     </button>
 

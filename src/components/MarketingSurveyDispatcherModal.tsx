@@ -22,6 +22,7 @@ import {
   Plus
 } from 'lucide-react';
 import { MarketingSurveyAssignment, MarketingSessionCategory, DepartmentRole } from '../types';
+import { sendInAppNotification } from '../utils/inAppMessagingService';
 
 interface MarketingSurveyDispatcherModalProps {
   isOpen: boolean;
@@ -140,6 +141,53 @@ ${instructions}
     navigator.clipboard.writeText(generatedSurveyUrl);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2500);
+  };
+
+  const [internalSentNotice, setInternalSentNotice] = useState<string | null>(null);
+
+  const handleDispatchInternal = () => {
+    const newAssignment: MarketingSurveyAssignment = {
+      id: 'dispatch-' + Date.now(),
+      siteName,
+      governorate,
+      cityOrDistrict,
+      addressDetails,
+      surveyorName,
+      surveyorPhone,
+      assignedBy: targetDeptLabels[targetDepartment],
+      assignedDate: new Date().toISOString(),
+      targetScope: 'new_station',
+      sessionCategory,
+      assignedDepartmentTarget: targetDepartment,
+      status: 'dispatched',
+      surveyToken: 'tok-' + Math.random().toString(36).substring(2, 9),
+      surveyUrl: generatedSurveyUrl,
+      instructions
+    };
+
+    if (onDispatchAssignment) {
+      onDispatchAssignment(newAssignment);
+    }
+
+    // Direct In-App Notification Dispatch with audio ringtone & background system notification
+    sendInAppNotification({
+      senderRole: targetDepartment,
+      senderName: targetDeptLabels[targetDepartment],
+      recipientRole: 'all',
+      recipientName: surveyorName || 'مهندس الرصد الميداني',
+      title: `تكليف رصد واستكشاف: ${siteName} (${governorate})`,
+      body: `تكليف فوري للمهندس ${surveyorName}: يرجى إجراء الرصد الميداني واستيفاء نموذج الفحص لموقع [${siteName}] بـ [${cityOrDistrict} - ${governorate}].\nالتعليمات: ${instructions || 'التوثيق الشامل ومسافات الأمان'}.\nالرابط المباشر: ${generatedSurveyUrl}`,
+      category: 'assignment',
+      priority: 'urgent',
+      actionUrl: generatedSurveyUrl,
+      actionLabel: 'فتح استمارة الرصد الميداني'
+    });
+
+    setInternalSentNotice('تم بنجاح إرسال التكليف داخلياً في المنظومة وإطلاق نغمة الرنين دون الحاجة لمغادرة التطبيق!');
+    setTimeout(() => {
+      setInternalSentNotice(null);
+      onClose();
+    }, 2000);
   };
 
   const handleDispatch = () => {
@@ -471,6 +519,14 @@ ${instructions}
 
         </div>
 
+        {/* Internal Sent Notice */}
+        {internalSentNotice && (
+          <div className="mx-6 my-2 p-3 bg-indigo-950/80 border border-indigo-500/50 rounded-xl text-xs text-indigo-300 flex items-center gap-2 shadow">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="font-bold">{internalSentNotice}</span>
+          </div>
+        )}
+
         {/* Modal Footer Actions */}
         <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
           <button
@@ -481,11 +537,11 @@ ${instructions}
             إلغاء
           </button>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={handleCopyLink}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
             >
               <Copy className="w-4 h-4 text-slate-400" />
               <span>نسخ الرابط</span>
@@ -493,11 +549,20 @@ ${instructions}
 
             <button
               type="button"
-              onClick={handleDispatch}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+              onClick={handleDispatchInternal}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
             >
-              <Send className="w-4 h-4" />
-              <span>إرسال عبر الواتساب فوراً</span>
+              <Send className="w-4 h-4 text-indigo-200" />
+              <span>إرسال تكليف داخلي فوري (مع رنين 🔔)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDispatch}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>إرسال عبر الواتساب</span>
             </button>
           </div>
         </div>

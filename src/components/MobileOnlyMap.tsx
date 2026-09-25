@@ -25,6 +25,7 @@ import { CargasNgvLogo } from './CargasNgvLogo';
 import { BRANDS_INFO, BrandType, getCompanyMarkerHtml, CompanyBrandBadge } from './CompanyBrandBadges';
 import { MapPrintReportModal } from './MapPrintReportModal';
 import { AddStationMapModal } from './AddStationMapModal';
+import { GisHeatmapOverlay } from './GisHeatmapOverlay';
 
 export interface MobileOnlyMapProps {
   sessions: MonitoringSession[];
@@ -63,6 +64,10 @@ export const MobileOnlyMap: React.FC<MobileOnlyMapProps> = ({
 
   // Map Display Mode: Google Earth (Satellite) vs Google Maps (Streets) vs Dark GIS
   const [mapMode, setMapMode] = useState<'satellite' | 'streets' | 'dark'>('satellite');
+
+  // Heatmap View State
+  const [isHeatmapEnabled, setIsHeatmapEnabled] = useState<boolean>(false);
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
 
   // Layer Visibility Toggles
   const [showCargasStations, setShowCargasStations] = useState<boolean>(true);
@@ -120,6 +125,7 @@ export const MobileOnlyMap: React.FC<MobileOnlyMapProps> = ({
     }).setView(defaultCenter, 13);
 
     mapInstanceRef.current = map;
+    setMapInstance(map);
 
     // Add Top-Left Zoom Control
     L.control.zoom({ position: 'topleft' }).addTo(map);
@@ -138,6 +144,7 @@ export const MobileOnlyMap: React.FC<MobileOnlyMapProps> = ({
     return () => {
       map.remove();
       mapInstanceRef.current = null;
+      setMapInstance(null);
     };
   }, []);
 
@@ -444,6 +451,21 @@ export const MobileOnlyMap: React.FC<MobileOnlyMapProps> = ({
               </button>
             </div>
 
+            {/* Heatmap Fast Toggle Button */}
+            <button
+              id="btn-toolbar-toggle-heatmap"
+              onClick={() => setIsHeatmapEnabled(prev => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                isHeatmapEnabled
+                  ? 'bg-gradient-to-r from-rose-600 via-amber-500 to-emerald-600 text-white border-amber-300 shadow-lg shadow-rose-600/30 ring-1 ring-amber-400'
+                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-slate-700'
+              }`}
+              title="عرض خريطة الكثافة الحرارية لتوزيع المحطات والمشروعات وحركة المرور"
+            >
+              <Flame className={`w-3.5 h-3.5 ${isHeatmapEnabled ? 'text-amber-200 animate-pulse' : 'text-slate-400'}`} />
+              <span>{isHeatmapEnabled ? 'الخريطة الحرارية مفعّلة' : 'الخريطة الحرارية (Heatmap)'}</span>
+            </button>
+
             {/* Place Station Tool Button */}
             <button
               id="btn-place-station-on-map"
@@ -563,6 +585,15 @@ export const MobileOnlyMap: React.FC<MobileOnlyMapProps> = ({
             className={`w-full h-[520px] sm:h-[620px] lg:h-[700px] z-10 ${
               isPlacingStation ? 'cursor-crosshair' : 'cursor-grab'
             }`}
+          />
+
+          {/* Interactive Activity Density Heatmap Overlay */}
+          <GisHeatmapOverlay
+            map={mapInstance}
+            sessions={sessions}
+            stations={localStations}
+            enabled={isHeatmapEnabled}
+            onToggleEnabled={setIsHeatmapEnabled}
           />
 
           {/* Bottom Map Status Floating Legend */}

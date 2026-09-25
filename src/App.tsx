@@ -25,6 +25,10 @@ import { loadPlatformSettings, savePlatformSettings } from './data/defaultSettin
 import { INITIAL_CUSTOM_FORM_FIELDS, INITIAL_FORM_CHANGE_REQUESTS, DEPARTMENTS_METADATA, DEPARTMENT_ROLE_SPECS } from './data/departmentCustomFields';
 import { DEFAULT_LANDOWNER_APPLICATIONS } from './data/defaultLandownerApplications';
 import { DepartmentTeamInviteModal } from './components/DepartmentTeamInviteModal';
+import { FloatingNotificationBanner } from './components/FloatingNotificationBanner';
+import { InAppNotificationCenterModal } from './components/InAppNotificationCenterModal';
+import { getUnreadNotificationsCount } from './utils/inAppMessagingService';
+import { initNotificationAudioService } from './utils/audioNotificationService';
 import {
   isAdminAuthenticated,
   setAdminAuthenticated,
@@ -131,6 +135,27 @@ export default function App() {
       }
     }
   }, [effectiveRole, activeTab]);
+
+  // In-App Notification Center & Real-time Audio Alert System
+  const [isInAppNotifCenterOpen, setIsInAppNotifCenterOpen] = useState<boolean>(false);
+  const [unreadInAppCount, setUnreadInAppCount] = useState<number>(() => getUnreadNotificationsCount(effectiveRole || undefined));
+
+  // Initialize Audio & Service Worker notification service on first mount
+  useEffect(() => {
+    initNotificationAudioService();
+  }, []);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setUnreadInAppCount(getUnreadNotificationsCount(effectiveRole || undefined));
+    };
+    window.addEventListener('cng_notifications_updated', handleUpdate);
+    window.addEventListener('cng_new_inapp_message', handleUpdate);
+    return () => {
+      window.removeEventListener('cng_notifications_updated', handleUpdate);
+      window.removeEventListener('cng_new_inapp_message', handleUpdate);
+    };
+  }, [effectiveRole]);
 
   // Master Platform Settings (Fuel pricing, Feasibility defaults, Technical Guide items)
   const [settings, setSettings] = useState<PlatformMasterSettings>(() => loadPlatformSettings());
@@ -485,6 +510,8 @@ export default function App() {
         }}
         onOpenTeamInvite={() => setIsTeamInviteModalOpen(true)}
         onOpenLandownerApplications={() => setIsLandownerModalOpen(true)}
+        onOpenInAppNotifications={() => setIsInAppNotifCenterOpen(true)}
+        unreadInAppCount={unreadInAppCount}
         userType={userType}
         userName={userName}
         isDirectLink={isDirectLink}
@@ -619,12 +646,20 @@ export default function App() {
               <DepartmentWorkspaceView
                 department={effectiveRole || 'operations'}
                 sessions={sessions}
+                stations={stations}
                 activeSession={activeSession}
                 onSelectSession={(session) => setActiveSessionId(session.id)}
                 onUpdateSession={handleUpdateSession}
                 customFields={customFields}
                 onSubmitFormChangeRequest={(newReq) => setChangeRequests(prev => [newReq, ...prev])}
                 changeRequests={changeRequests}
+                onNavigateToCamera={() => {
+                  if (!activeSession && sessions.length > 0) {
+                    setActiveSessionId(sessions[0].id);
+                  }
+                  setActiveTab('camera');
+                }}
+                onNavigateToMap={() => setActiveTab('map')}
                 onNavigateToAdmin={() => {
                   setAdminPreviewRole(null);
                   setCurrentRole('admin');
@@ -791,6 +826,18 @@ export default function App() {
           setIsClientPortalOpen(true);
         }}
         currentRole={effectiveRole || 'marketing'}
+      />
+
+      {/* Real-time Floating Notification Banner (Global) */}
+      <FloatingNotificationBanner
+        onOpenNotificationCenter={() => setIsInAppNotifCenterOpen(true)}
+      />
+
+      {/* Global In-App Notification Center & Ringtone Modal */}
+      <InAppNotificationCenterModal
+        isOpen={isInAppNotifCenterOpen}
+        onClose={() => setIsInAppNotifCenterOpen(false)}
+        currentDepartment={effectiveRole || undefined}
       />
 
       {/* Footer / System status */}

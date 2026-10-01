@@ -166,3 +166,35 @@ export function deleteInAppNotification(id: string): void {
     window.dispatchEvent(new CustomEvent('cng_notifications_updated'));
   } catch {}
 }
+
+export function dispatchInAppNotification(params: {
+  senderRole?: any;
+  senderName?: string;
+  recipientRole?: any;
+  recipientName?: string;
+  title: string;
+  content?: string;
+  body?: string;
+  category?: any;
+  priority?: any;
+  stationCode?: string;
+  stationId?: string;
+  stationTitle?: string;
+  actionUrl?: string;
+  actionLabel?: string;
+}): InAppNotificationItem {
+  return sendInAppNotification({
+    senderRole: params.senderRole || 'general_manager',
+    senderName: params.senderName || 'المدير العام',
+    recipientRole: params.recipientRole || 'all',
+    recipientName: params.recipientName || 'فريق العمل',
+    title: params.title,
+    body: params.content || params.body || '',
+    category: params.category === 'urgent' ? 'urgent_alert' : (params.category || 'assignment'),
+    priority: params.priority === 'urgent' ? 'urgent' : (params.priority === 'critical' ? 'critical' : 'normal'),
+    stationId: params.stationId || params.stationCode,
+    stationTitle: params.stationTitle,
+    actionUrl: params.actionUrl,
+    actionLabel: params.actionLabel || 'عرض التفاصيل',
+  });
+}

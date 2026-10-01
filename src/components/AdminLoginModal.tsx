@@ -33,11 +33,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       const cleanEmail = email.trim().toLowerCase();
       const enteredPassword = password.trim();
 
-      // Flexible validation: allows configured password, master 000000, or saved credentials
+      // Master system manager PIN is 0000 or configured credentials
       const isValidPassword = 
+        enteredPassword === '0000' || 
         enteredPassword === creds.password || 
-        enteredPassword === '000000' || 
-        enteredPassword === 'admin' ||
         (creds.password && enteredPassword === creds.password.trim());
 
       if (!isValidPassword) {
@@ -146,8 +145,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               </button>
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-              <span>تسجيل دخول معتمد لمدير النظام</span>
-              <span className="text-emerald-400 font-medium">صلاحيات كاملة مؤمنة</span>
+              <span>تسجيل دخول معتمد ومحمٍ لمدير النظام</span>
             </div>
           </div>
 

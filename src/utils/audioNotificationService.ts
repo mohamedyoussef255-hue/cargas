@@ -282,3 +282,7 @@ export function registerServiceWorkerForNotifications(): void {
 export function initNotificationAudioService(): void {
   registerServiceWorkerForNotifications();
 }
+
+export function playNotificationChime(): void {
+  playNotificationSound('chime');
+}

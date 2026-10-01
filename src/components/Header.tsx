@@ -23,7 +23,14 @@ import {
   ShieldCheck,
   FileText,
   Home,
-  Bell
+  Bell,
+  Flame,
+  Wrench,
+  Cpu,
+  FileCheck,
+  Scale,
+  BadgeDollarSign,
+  Layers
 } from 'lucide-react';
 import { MonitoringSession, DepartmentRole, ActiveTabType } from '../types';
 export type { ActiveTabType };
@@ -48,6 +55,7 @@ interface HeaderProps {
   isDirectLink?: boolean;
   onOpenLandownerApplications?: () => void;
   onOpenInAppNotifications?: () => void;
+  onOpenAdminLogin?: () => void;
   unreadInAppCount?: number;
 }
 
@@ -70,6 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
   isDirectLink = false,
   onOpenLandownerApplications,
   onOpenInAppNotifications,
+  onOpenAdminLogin,
   unreadInAppCount = 0,
 }) => {
   const effectiveRole = currentRole || 'admin';

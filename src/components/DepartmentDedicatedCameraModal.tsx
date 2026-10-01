@@ -1,32 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Camera, 
-  Video, 
-  Square, 
-  Save, 
-  XCircle, 
   RotateCcw, 
   CheckCircle2, 
   AlertTriangle, 
   Wrench, 
-  Building2, 
-  Flame, 
-  Cpu, 
-  FileCheck, 
-  Sparkles, 
-  Eye, 
-  Maximize2, 
   Clock, 
-  MapPin, 
   Check, 
   X,
   Play,
   Pause,
-  Film
+  Save,
+  ShieldCheck,
+  Settings2,
+  Plus,
+  Minus,
+  Car,
+  Sparkles,
+  Undo2,
+  HelpCircle
 } from 'lucide-react';
 import { DepartmentRole, MonitoringSession, RecordedVideoSession } from '../types';
 import { DEPARTMENTS_METADATA } from '../data/departmentCustomFields';
 import { addVideoToArchive, logDepartmentActivity } from '../data/authCredentials';
+import { 
+  loadDepartmentCameraTasks, 
+  CameraInspectionTask, 
+  EVENT_CAMERA_TASKS_UPDATED 
+} from '../utils/cameraTasksConfig';
+import { AdminCameraTasksManager } from './AdminCameraTasksManager';
 
 interface DepartmentDedicatedCameraModalProps {
   isOpen: boolean;
@@ -35,6 +37,7 @@ interface DepartmentDedicatedCameraModalProps {
   onSaveSession?: (session: MonitoringSession) => void;
   defaultLocationName?: string;
   activeSession?: MonitoringSession | null;
+  isAdmin?: boolean;
 }
 
 export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraModalProps> = ({
@@ -44,6 +47,7 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
   onSaveSession,
   defaultLocationName = 'محطة كارجاس - الموقع الميداني',
   activeSession,
+  isAdmin = false,
 }) => {
   const meta = DEPARTMENTS_METADATA[department] || DEPARTMENTS_METADATA.operations;
 
@@ -54,17 +58,123 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [isRecording, setIsRecording] = useState(true);
   const [inspectedItems, setInspectedItems] = useState<string[]>([]);
-  const [selectedFindings, setSelectedFindings] = useState<string[]>([]);
   const [findingsNotes, setFindingsNotes] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showAdminTasksManager, setShowAdminTasksManager] = useState(false);
+  const [marketingActiveView, setMarketingActiveView] = useState<'vehicles' | 'checklist'>(department === 'marketing' ? 'vehicles' : 'checklist');
+
+  // Marketing Quick Vehicle Tally State (Initialized from activeSession if available)
+  const [vehicleCounts, setVehicleCounts] = useState<Record<string, number>>(() => ({
+    private: activeSession?.counts?.private || 0,
+    taxi: activeSession?.counts?.taxi || 0,
+    microbus: activeSession?.counts?.microbus || 0,
+    van: activeSession?.counts?.van || 0,
+    minibus: activeSession?.counts?.minibus || 0,
+    pickup: activeSession?.counts?.pickup || 0,
+    bus: activeSession?.counts?.bus || 0,
+    motorcycle: activeSession?.counts?.motorcycle || 0,
+    suzuki_van: activeSession?.counts?.suzuki_van || 0,
+    peugeot_station: activeSession?.counts?.peugeot_station || 0,
+  }));
+
+  // Undo history stack for mistake correction
+  const [tallyHistory, setTallyHistory] = useState<string[]>([]);
+
+  const handleIncVehicle = (type: string) => {
+    setVehicleCounts(prev => ({
+      ...prev,
+      [type]: (prev[type] || 0) + 1
+    }));
+    setTallyHistory(prev => [type, ...prev.slice(0, 30)]);
+  };
+
+  const handleDecVehicle = (type: string) => {
+    setVehicleCounts(prev => ({
+      ...prev,
+      [type]: Math.max(0, (prev[type] || 0) - 1)
+    }));
+  };
+
+  const handleUndoLastTally = () => {
+    if (tallyHistory.length === 0) return;
+    const lastType = tallyHistory[0];
+    handleDecVehicle(lastType);
+    setTallyHistory(prev => prev.slice(1));
+  };
+
+  const totalMarketingVehicles = Object.values(vehicleCounts).reduce((a, b) => a + b, 0);
+
+  // Dynamic Camera inspection tasks loaded from config
+  const [availableTasks, setAvailableTasks] = useState<CameraInspectionTask[]>(() =>
+    loadDepartmentCameraTasks(department, false)
+  );
+
+  useEffect(() => {
+    const handleTasksUpdate = () => {
+      setAvailableTasks(loadDepartmentCameraTasks(department, false));
+    };
+    window.addEventListener(EVENT_CAMERA_TASKS_UPDATED, handleTasksUpdate);
+    return () => {
+      window.removeEventListener(EVENT_CAMERA_TASKS_UPDATED, handleTasksUpdate);
+    };
+  }, [department]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const [cameraStreamActive, setCameraStreamActive] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+
+  // Stop camera tracks immediately and completely release hardware sensor
+  const stopCamera = useCallback(() => {
+    // 1. Stop all tracks in mediaStreamRef
+    if (mediaStreamRef.current) {
+      try {
+        const tracks = mediaStreamRef.current.getTracks();
+        tracks.forEach(track => {
+          try {
+            track.stop();
+          } catch (e) {}
+        });
+      } catch (err) {
+        console.warn('Error stopping camera track in ref:', err);
+      }
+      mediaStreamRef.current = null;
+    }
+
+    // 2. Stop all tracks in state mediaStream if different
+    if (mediaStream) {
+      try {
+        const tracks = mediaStream.getTracks();
+        tracks.forEach(track => {
+          try {
+            track.stop();
+          } catch (e) {}
+        });
+      } catch (e) {}
+    }
+
+    // 3. Clear and pause video element completely
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+        if (videoRef.current.srcObject) {
+          const s = videoRef.current.srcObject as MediaStream;
+          s.getTracks?.().forEach(t => {
+            try { t.stop(); } catch (e) {}
+          });
+          videoRef.current.srcObject = null;
+        }
+        videoRef.current.load();
+      } catch (e) {}
+    }
+
+    setMediaStream(null);
+    setCameraStreamActive(false);
+  }, [mediaStream]);
 
   // Format time for session naming
   const formatTimeName = (date: Date) => {
@@ -74,53 +184,6 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
   };
 
   const autoGeneratedTitle = `جلسة رصد وتوثيق (${formatTimeName(sessionStartTime)}) - ${meta.title}`;
-
-  // Department-specific inspection checklist items
-  const getDepartmentEquipments = (): { id: string; label: string }[] => {
-    switch (department) {
-      case 'operations':
-        return [
-          { id: 'compressor_location', label: 'رصد مكان ضاغط الغاز الرئيسي ومسافات الارتداد' },
-          { id: 'compressor_specs', label: 'بيان مواصفات الضاغط (1000 - 1500 م³/ساعة - 250 بار)' },
-          { id: 'dispensers_audit', label: 'رصد أماكن موزعات الغاز (Dispensers) وجزر التموين' },
-          { id: 'cascades_audit', label: 'رصد وتصوير بنوك الأسطوانات ومصفوفات التخزين (Cascades)' },
-          { id: 'control_panel_audit', label: 'رصد لوحة التحكم الكهربائية وغرفة التحكم والمراقبة (MCC)' },
-          { id: 'piping_cooling', label: 'بيان وتصوير خطوط السحب والطرد ونظام التبريد والتهوية' },
-        ];
-      case 'projects':
-        return [
-          { id: 'land_survey', label: 'رفع مساحي دقيق للمكان وتحديد إحداثيات الحدود والأركان' },
-          { id: 'engineering_maps', label: 'مطابقة الخرائط الهندسية والمخطط العام المعتمد (Layout Plan)' },
-          { id: 'land_dimensions', label: 'قياس أبعاد الأرض الفعلية (الطول × العرض) وإجمالي المساحة' },
-          { id: 'access_roads', label: 'فحص الشوارع المحيطة ومحاور الدخول والخروج وعروض الحارات' },
-          { id: 'soil_levels', label: 'فحص مناسيب الموقع وتسوية الأرض واختبارات التربة والأساسات' },
-          { id: 'concrete_foundations', label: 'رصد وتوثيق القواعد الخرسانية المسلحة للضاغط والمظلة' },
-        ];
-      case 'hse':
-        return [
-          { id: 'safety_system_execution', label: 'رصد منظومة السلامة والصحة المهنية والأمن الصناعي أثناء التنفيذ' },
-          { id: 'nfpa_safety_distances', label: 'فحص ومطابقة مسافات الأمان القياسية طبقاً لكود NFPA 52' },
-          { id: 'gas_detectors_audit', label: 'رصد وتجربة كواشف الغاز الطبيعي (Gas Detectors)' },
-          { id: 'flame_detectors_audit', label: 'رصد كواشف اللهب والأشعة تحت وفوق الحمراء UV/IR' },
-          { id: 'esd_valves_audit', label: 'فحص محابس وصمامات الغلق السريع في الطوارئ (ESD Valves)' },
-          { id: 'fire_extinguishers_audit', label: 'منظومة مكافحة الحريق ومدافع البودرة ومسارات الهروب والإخلاء' },
-        ];
-      case 'technical':
-        return [
-          { id: 'prs_station', label: 'رصد موقع محطة تخفيض الضغط والقياس (PRS)' },
-          { id: 'pipeline_tie_in', label: 'نقطة الربط على خط الغاز الطبيعي المغذي وبيان الضغط' },
-          { id: 'flow_meters', label: 'عدادات قياس التدفق والحجم والحرارة القياسية' },
-          { id: 'pressure_tests', label: 'اختبارات ضغوط النيتروجين وفحص تسريب الغاز' },
-          { id: 'valves_skid', label: 'منظومة المحابس والفلترة وخط التغذية الرئيسي' },
-        ];
-      default:
-        return [
-          { id: 'site_survey', label: 'معاينة الموقع ومطابقة المخطط الهندسي' },
-          { id: 'surrounding_roads', label: 'الشوارع المحيطة والمداخل والمخارج' },
-          { id: 'official_documents', label: 'توثيق لوحات التراخيص والحدود' },
-        ];
-    }
-  };
 
   // Timer effect
   useEffect(() => {
@@ -137,15 +200,12 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
   // Request camera stream with multi-level robust fallback
   const startCamera = async (facing: 'environment' | 'user') => {
     setCameraError(null);
+    stopCamera();
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraError('المتصفح أو البيئة الحالية لا تدعم استدعاء الكاميرا.');
       setCameraStreamActive(false);
       return;
-    }
-
-    // Stop existing stream tracks
-    if (mediaStream) {
-      mediaStream.getTracks().forEach(t => t.stop());
     }
 
     let stream: MediaStream | null = null;
@@ -178,6 +238,7 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
     }
 
     if (stream) {
+      mediaStreamRef.current = stream;
       setMediaStream(stream);
       setCameraStreamActive(true);
       setCameraError(null);
@@ -195,17 +256,51 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
     startCamera(nextFacing);
   };
 
-  // Trigger camera on modal open
+  // Toggle Recording and physical camera pause/resume (stops camera sensor to turn off hardware indicator)
+  const toggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      stopCamera();
+    } else {
+      setIsRecording(true);
+      startCamera(facingMode);
+    }
+  };
+
+  // Trigger camera on modal open, shut down completely when closed or unmounted
   useEffect(() => {
-    if (!isOpen) return;
-    startCamera(facingMode);
+    if (isOpen) {
+      startCamera(facingMode);
+    } else {
+      stopCamera();
+    }
 
     return () => {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
     };
   }, [isOpen]);
+
+  // Window unload / visibility listeners to turn off camera immediately
+  useEffect(() => {
+    const handleUnload = () => {
+      stopCamera();
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopCamera();
+      } else if (isOpen && isRecording) {
+        startCamera(facingMode);
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    window.addEventListener('pagehide', handleUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('pagehide', handleUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [stopCamera, isOpen, isRecording, facingMode]);
 
   // Keep videoRef in sync with mediaStream
   useEffect(() => {
@@ -243,6 +338,7 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
   // Action: Finish and Save Session
   const handleFinishAndSave = () => {
     setIsRecording(false);
+    stopCamera();
 
     const sessionId = 'doc-' + Date.now().toString(36);
     const timeDisplay = formatTimeName(sessionStartTime);
@@ -264,24 +360,18 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
       endTime: new Date().toISOString(),
       durationSeconds: durationSeconds || 60,
       counts: {
-        private: 0,
-        taxi: 0,
-        microbus: 0,
-        van: 0,
-        minibus: 0,
-        pickup: 0,
-        bus: 0,
-        motorcycle: 0,
-        suzuki_van: 0,
-        peugeot_station: 0
+        private: vehicleCounts.private || 0,
+        taxi: vehicleCounts.taxi || 0,
+        microbus: vehicleCounts.microbus || 0,
+        van: vehicleCounts.van || 0,
+        minibus: vehicleCounts.minibus || 0,
+        pickup: vehicleCounts.pickup || 0,
+        bus: vehicleCounts.bus || 0,
+        motorcycle: vehicleCounts.motorcycle || 0,
+        suzuki_van: vehicleCounts.suzuki_van || 0,
+        peugeot_station: vehicleCounts.peugeot_station || 0
       },
       detections: [],
-      departmentOrigin: department,
-      documentationCategory: department === 'operations' ? 'equipment_machinery' :
-                             department === 'projects' ? 'land_civil' :
-                             department === 'hse' ? 'safety_inspection' :
-                             department === 'technical' ? 'technical_network' : 'traffic_census',
-      videoDurationSeconds: durationSeconds || 60,
       notes: findingsNotes || `تم توثيق ${inspectedItems.length} عنصر من عناصر ${meta.title} بنجاح.`
     };
 
@@ -334,7 +424,13 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
 
   // Action: Cancel Saving
   const handleCancelSaving = () => {
+    stopCamera();
     setShowCancelConfirm(false);
+    onClose();
+  };
+
+  const handleCloseDirectly = () => {
+    stopCamera();
     onClose();
   };
 
@@ -370,61 +466,75 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
             {/* Live REC badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-mono font-bold">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-              <span>تسجيل حي: {timeFormatted}</span>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold ${
+              isRecording 
+                ? 'bg-red-500/20 border-red-500/40 text-red-400' 
+                : 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+            }`}>
+              <span className={`w-2.5 h-2.5 rounded-full ${isRecording ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
+              <span>{isRecording ? `تسجيل حي: ${timeFormatted}` : 'الكاميرا متوقفة مؤقتاً'}</span>
             </div>
+
             <button
-              onClick={() => setShowCancelConfirm(true)}
-              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
-              title="إغلاق"
+              onClick={() => {
+                if (durationSeconds > 5) {
+                  setShowCancelConfirm(true);
+                } else {
+                  handleCloseDirectly();
+                }
+              }}
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+              title="إغلاق الكاميرا وإنهائها"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Modal Body */}
+        {/* Modal Body: Two Columns */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Camera View Area (7 Cols) */}
+          {/* Left Panel: Camera Viewport (7 Cols) */}
           <div className="lg:col-span-7 flex flex-col gap-4">
-            <div className="relative aspect-video w-full rounded-2xl bg-black border border-slate-800 overflow-hidden shadow-inner flex items-center justify-center">
-              
-              {/* Always rendered live video */}
+            
+            {/* Hidden canvas for taking photos */}
+            <canvas ref={canvasRef} className="hidden" />
+
+            {/* Video Viewport Container */}
+            <div className="relative w-full aspect-video sm:aspect-[4/3] rounded-2xl overflow-hidden bg-black border-2 border-slate-800 shadow-inner flex items-center justify-center">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${cameraStreamActive ? 'opacity-100' : 'opacity-0'}`}
+                className={`w-full h-full object-cover ${cameraStreamActive ? 'block' : 'hidden'}`}
               />
 
-              {/* Hidden canvas for snapshot capture */}
-              <canvas ref={canvasRef} className="hidden" />
-
-              {/* Overlay if camera is connecting or failed */}
+              {/* Offline / Placeholder state */}
               {!cameraStreamActive && (
-                <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-10 space-y-3">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center animate-pulse">
-                    <Camera className="w-7 h-7" />
+                <div className="p-6 text-center space-y-3 z-10">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 mx-auto flex items-center justify-center text-slate-400">
+                    <Camera className="w-8 h-8 animate-pulse text-amber-400" />
                   </div>
                   <div>
                     <h4 className="text-white font-bold text-sm">
-                      {cameraError ? 'تعذر فتح الكاميرا المباشرة' : 'جاري فتح عدسة الكاميرا...'}
+                      {cameraError ? 'تعذر فتح الكاميرا المباشرة' : (isRecording ? 'جاري فتح عدسة الكاميرا...' : 'الكاميرا متوقفة مؤقتاً لحفظ الطاقة')}
                     </h4>
                     <p className="text-slate-400 text-xs max-w-sm mt-1">
-                      {cameraError || 'يرجى السماح بصلاحية الكاميرا في المتصفح لتوثيق الموقع بالفيديو والصور الميدانية.'}
+                      {cameraError || (isRecording ? 'يرجى السماح بصلاحية الكاميرا لتوثيق الموقع بالفيديو والصور.' : 'اضغط على زر استئناف لتشغيل الكاميرا وإعادة التقاط الصور.')}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center justify-center gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => startCamera(facingMode)}
+                      onClick={() => {
+                        setIsRecording(true);
+                        startCamera(facingMode);
+                      }}
                       className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center gap-1.5"
                     >
                       <RotateCcw className="w-4 h-4" />
-                      <span>إعادة محاولة تشغيل الكاميرا</span>
+                      <span>{isRecording ? 'إعادة محاولة تشغيل الكاميرا' : 'استئناف تشغيل الكاميرا'}</span>
                     </button>
                     <button
                       type="button"
@@ -461,7 +571,7 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
                     : 'bg-amber-950/80 text-amber-300 border-amber-500/30'
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-rose-500 animate-ping' : 'bg-amber-500'}`}></span>
-                  <span>{isRecording ? 'تسجيل مباشر' : 'متوقف مؤقتاً'}</span>
+                  <span>{isRecording ? 'تسجيل مباشر' : 'الكاميرا متوقفة'}</span>
                 </div>
               </div>
 
@@ -473,7 +583,7 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
                   type="button"
                   onClick={toggleFacing}
                   title="تبديل العدسة (الأمامية / الخلفية)"
-                  className="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white border border-white/10 transition-colors"
+                  className="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white border border-white/10 transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
@@ -487,30 +597,112 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
               <div className="absolute bottom-3 left-3 flex items-center gap-2 z-20">
                 <button
                   type="button"
-                  onClick={() => setIsRecording(!isRecording)}
-                  title={isRecording ? "إيقاف مؤقت" : "استئناف"}
-                  className={`p-2 rounded-xl backdrop-blur-md border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  onClick={toggleRecording}
+                  title={isRecording ? "إيقاف الكاميرا مؤقتاً" : "استئناف الكاميرا"}
+                  className={`p-2 rounded-xl backdrop-blur-md border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     isRecording
                       ? 'bg-black/60 hover:bg-black/80 text-amber-300 border-amber-500/40'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/50'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/50 shadow-lg'
                   }`}
                 >
                   {isRecording ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{isRecording ? 'إيقاف مؤقت' : 'استئناف'}</span>
+                  <span className="hidden sm:inline">{isRecording ? 'إيقاف الكاميرا' : 'استئناف الكاميرا'}</span>
                 </button>
 
                 {/* Instant Photo Snapshot button */}
                 <button
                   type="button"
                   onClick={capturePhoto}
+                  disabled={!cameraStreamActive}
                   title="التقاط لقطة فورية من الكاميرا"
-                  className="p-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white border border-emerald-400/50 text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 cursor-pointer"
+                  className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/50 text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
                 >
                   <Camera className="w-4 h-4" />
                   <span className="hidden sm:inline">التقاط صورة ({capturedPhotos.length})</span>
                 </button>
               </div>
             </div>
+
+            {/* Direct Quick Tally Bar under Camera Viewport (Always visible right under camera feed for marketing) */}
+            {department === 'marketing' && (
+              <div className="p-3 bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-950 border-2 border-emerald-500/40 rounded-2xl shadow-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Car className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-black text-white">
+                      لوحة الرصد السريع المباشر (أهداف التحويل الاقتصادية للغاز)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleUndoLastTally}
+                      disabled={tallyHistory.length === 0}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 text-[11px] font-bold transition-colors cursor-pointer"
+                      title="تراجع عن آخر رصد"
+                    >
+                      <Undo2 className="w-3 h-3 text-amber-400" />
+                      <span>تراجع</span>
+                    </button>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      الإجمالي: {totalMarketingVehicles} مركبة
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4 Primary Conversion Targets (ملاكي / أجرة / ميكروباص / فان) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { key: 'private', label: 'ملاكي', desc: 'سيارات خاصة', badge: 'bg-emerald-500/20 text-emerald-300' },
+                    { key: 'taxi', label: 'أجرة', desc: 'تاكسي وأجرة', badge: 'bg-amber-500/20 text-amber-300' },
+                    { key: 'microbus', label: 'ميكروباص', desc: 'سرفيس ونقل ركاب', badge: 'bg-blue-500/20 text-blue-300' },
+                    { key: 'van', label: 'فان', desc: 'سوزوكي وبضائع', badge: 'bg-purple-500/20 text-purple-300' },
+                  ].map((target) => {
+                    const count = vehicleCounts[target.key] || 0;
+                    return (
+                      <div
+                        key={target.key}
+                        className="p-2 rounded-xl bg-slate-950/90 border border-slate-800 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-white">{target.label}</span>
+                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${target.badge}`}>
+                            هدف تحويل
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between bg-slate-900/80 p-1 rounded-lg border border-slate-800">
+                          {/* Decrement Button (-) */}
+                          <button
+                            type="button"
+                            onClick={() => handleDecVehicle(target.key)}
+                            disabled={count <= 0}
+                            className="w-7 h-7 rounded-md bg-slate-800 hover:bg-rose-900/60 disabled:opacity-20 text-rose-300 border border-slate-700 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed"
+                            title={`تخفيض عدد ${target.label} بمقدار 1 (-)`}
+                          >
+                            <Minus className="w-3.5 h-3.5 font-bold" />
+                          </button>
+
+                          {/* Count */}
+                          <span className="font-mono font-black text-sm text-white px-1">
+                            {count}
+                          </span>
+
+                          {/* Increment Button (+) */}
+                          <button
+                            type="button"
+                            onClick={() => handleIncVehicle(target.key)}
+                            className="w-7 h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition-all shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95"
+                            title={`زيادة عدد ${target.label} بمقدار 1 (+)`}
+                          >
+                            <Plus className="w-4 h-4 font-bold" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Captured Photos Preview Strip */}
             {capturedPhotos.length > 0 && (
@@ -526,7 +718,7 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
                       <button
                         type="button"
                         onClick={() => setCapturedPhotos(prev => prev.filter((_, i) => i !== pIdx))}
-                        className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                         title="حذف"
                       >
                         <X className="w-3 h-3" />
@@ -571,40 +763,254 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
           <div className="lg:col-span-5 flex flex-col justify-between gap-5">
             
             <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-                  <Wrench className="w-4 h-4 text-emerald-400" />
-                  <span>عناصر ومعدات الفحص المعتمدة ({meta.badge})</span>
-                </h4>
-                <p className="text-xs text-slate-400 mb-3">
-                  حدد العناصر والآلات التي تم توثيقها ورفع حالتها بالكاميرا:
-                </p>
-
-                <div className="grid grid-cols-1 gap-2">
-                  {getDepartmentEquipments().map((eq) => {
-                    const isChecked = inspectedItems.includes(eq.label);
-                    return (
-                      <button
-                        key={eq.id}
-                        type="button"
-                        onClick={() => toggleInspectedItem(eq.label)}
-                        className={`p-2.5 rounded-xl border text-xs text-right font-medium transition-all flex items-center justify-between cursor-pointer ${
-                          isChecked
-                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        <span>{eq.label}</span>
-                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${
-                          isChecked ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-700'
-                        }`}>
-                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                      </button>
-                    );
-                  })}
+              {/* Marketing View Selector Toggle */}
+              {department === 'marketing' && (
+                <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setMarketingActiveView('vehicles')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      marketingActiveView === 'vehicles'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Car className="w-4 h-4" />
+                    <span>لوحة الرصد السريع للمركبات ({totalMarketingVehicles})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarketingActiveView('checklist')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      marketingActiveView === 'checklist'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Wrench className="w-4 h-4" />
+                    <span>بنود المعاينة الميدانية ({inspectedItems.length})</span>
+                  </button>
                 </div>
-              </div>
+              )}
+
+              {/* View 1: Marketing High-Speed Vehicle Counting Panel */}
+              {department === 'marketing' && marketingActiveView === 'vehicles' ? (
+                <div className="space-y-3">
+                  {/* Technical Clarification & Focus Guidance */}
+                  <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-300 font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>🎯 أهداف التحويل الاقتصادية للغاز (ملاكي • أجرة • ميكروباص • فان):</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleUndoLastTally}
+                        disabled={tallyHistory.length === 0}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 text-[10px] font-bold transition-colors cursor-pointer"
+                        title="تراجع عن آخر رصد تم بالخطأ"
+                      >
+                        <Undo2 className="w-3 h-3 text-amber-400" />
+                        <span>تراجع</span>
+                      </button>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] text-slate-300 space-y-1">
+                      <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                        <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>هل يؤثر الرصد السريع على نتائج رصد الكاميرا؟</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        <strong className="text-slate-200">الرصد السريع لا يشوش على الكاميرا بل يعززها:</strong> تعمل الكاميرا بالرؤية الحاسوبية الآلية، وتتيح لك هذه اللوحة التدخل البشري الفوري لزيادة المركبات <strong className="text-emerald-400 font-bold">(+)</strong> أو تخفيضها <strong className="text-rose-400 font-bold">(-)</strong> عند تسجيل مركبة بالخطأ أو في النقاط المحجوبة، وتُحفظ البيانات كاملة بالتقرير.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 4 Primary Conversion Targets */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[11px] font-bold text-white">الفئات الأربعة ذات الجدوى الاقتصادية العالية:</span>
+                      <span className="text-[10px] text-emerald-400 font-mono">تكلفة تحويل منخفضة وعائد فوري</span>
+                    </div>
+
+                    {[
+                      { key: 'private', label: 'ملاكي (Private)', desc: 'سيارات الملاكي الخاصة والأسرية' },
+                      { key: 'taxi', label: 'أجرة / تاكسي (Taxi)', desc: 'سيارات الأجرة والتاكسي والليموزين' },
+                      { key: 'microbus', label: 'ميكروباص (Microbus)', desc: 'الميكروباص وسيارات نقل الركاب والسرفيس' },
+                      { key: 'van', label: 'فان / سوزوكي فان (Van)', desc: 'سيارات الفان والبضائع الخفيفة والتوزيع' },
+                    ].map((target) => {
+                      const count = vehicleCounts[target.key] || 0;
+                      return (
+                        <div
+                          key={target.key}
+                          className="p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 transition-all flex items-center justify-between gap-2"
+                        >
+                          <div 
+                            onClick={() => handleIncVehicle(target.key)}
+                            className="flex-1 cursor-pointer"
+                            title="انقر للزيادة السريعة"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <h5 className="font-bold text-xs text-white">{target.label}</h5>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                أولوية قصوى
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">{target.desc}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* Decrement Button (-) */}
+                            <button
+                              type="button"
+                              onClick={() => handleDecVehicle(target.key)}
+                              disabled={count <= 0}
+                              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-rose-900/70 disabled:opacity-20 text-rose-300 border border-slate-700 hover:border-rose-500/50 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed"
+                              title={`تخفيض عدد ${target.label} بمقدار 1 في حالة الخطأ (-)`}
+                            >
+                              <Minus className="w-4 h-4 font-bold" />
+                            </button>
+
+                            {/* Counter Display */}
+                            <div className="w-10 text-center">
+                              <span className="font-mono font-black text-sm text-white block">
+                                {count}
+                              </span>
+                              <span className="text-[9px] text-slate-500 font-mono">
+                                {totalMarketingVehicles > 0 ? `${Math.round((count / totalMarketingVehicles) * 100)}%` : '0%'}
+                              </span>
+                            </div>
+
+                            {/* Increment Button (+) */}
+                            <button
+                              type="button"
+                              onClick={() => handleIncVehicle(target.key)}
+                              className="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition-all cursor-pointer shadow-md shadow-emerald-600/30 active:scale-95"
+                              title={`زيادة عدد ${target.label} بمقدار 1 (+)`}
+                            >
+                              <Plus className="w-4 h-4 font-bold" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Secondary Heavy Categories (Collapsible / Compact) */}
+                  <div className="p-2.5 rounded-2xl bg-slate-950/50 border border-slate-800/80 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 block">
+                      فئات إضافية (تكلفة تحويلها مرتفعة):
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: 'bus', label: 'حافلات وأتوبيس' },
+                        { key: 'pickup', label: 'بيك أب ونقل' },
+                        { key: 'minibus', label: 'ميني باص' },
+                        { key: 'motorcycle', label: 'دراجات نارية' },
+                      ].map((item) => {
+                        const count = vehicleCounts[item.key] || 0;
+                        return (
+                          <div key={item.key} className="flex items-center justify-between p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px]">
+                            <span className="truncate text-slate-300">{item.label}</span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDecVehicle(item.key)}
+                                disabled={count <= 0}
+                                className="w-5 h-5 rounded bg-slate-800 text-rose-300 disabled:opacity-20 flex items-center justify-center"
+                              >
+                                <Minus className="w-2.5 h-2.5" />
+                              </button>
+                              <span className="font-mono font-bold text-white w-5 text-center text-xs">{count}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleIncVehicle(item.key)}
+                                className="w-5 h-5 rounded bg-slate-700 text-white flex items-center justify-center"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* View 2: Standard Checklist View */
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-emerald-400" />
+                      <span>عناصر ومعدات الفحص المعتمدة ({meta.badge})</span>
+                    </h4>
+
+                    {/* System Admin Tasks Control Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminTasksManager(!showAdminTasksManager)}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold transition-all cursor-pointer"
+                      title="التحكم في البنود: إضافة وتعديل وإخفاء وإظهار وإزالة"
+                    >
+                      <Settings2 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>تحكم مدير النظام</span>
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-400 mb-3">
+                    حدد العناصر والآلات التي تم توثيقها ورفع حالتها بالكاميرا:
+                  </p>
+
+                  {/* Inline Admin Tasks Management Drawer */}
+                  {showAdminTasksManager && (
+                    <div className="mb-4 p-4 rounded-2xl bg-slate-950 border border-amber-500/40 shadow-xl space-y-3 animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>تحكم مدير النظام في مهام كاميرا {meta.title}</span>
+                        </span>
+                        <button
+                          onClick={() => setShowAdminTasksManager(false)}
+                          className="p-1 text-slate-400 hover:text-white"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <AdminCameraTasksManager 
+                        initialDepartment={department}
+                        isEmbedded={true}
+                        onClose={() => setShowAdminTasksManager(false)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Tasks checklist buttons */}
+                  <div className="grid grid-cols-1 gap-2 max-h-[280px] overflow-y-auto pr-1">
+                    {availableTasks.map((eq) => {
+                      const isChecked = inspectedItems.includes(eq.label);
+                      return (
+                        <button
+                          key={eq.id}
+                          type="button"
+                          onClick={() => toggleInspectedItem(eq.label)}
+                          className={`p-2.5 rounded-xl border text-xs text-right font-medium transition-all flex items-center justify-between cursor-pointer ${
+                            isChecked
+                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
+                              : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                          }`}
+                        >
+                          <span className="truncate">{eq.label}</span>
+                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${
+                            isChecked ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-700'
+                          }`}>
+                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Notes */}
               <div>
@@ -612,104 +1018,75 @@ export const DepartmentDedicatedCameraModal: React.FC<DepartmentDedicatedCameraM
                   ملاحظات ونتائج التوثيق الفني للموقع:
                 </label>
                 <textarea
-                  rows={3}
                   value={findingsNotes}
                   onChange={(e) => setFindingsNotes(e.target.value)}
-                  placeholder="أدخل ملاحظات المعاينة، القراءات، أو تقرير الحالة الإنشائية والمعدات..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
+                  placeholder="أدخل أي ملاحظات فنية، عيوب رصد، أو توصيات هندسية..."
+                  rows={3}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
                 />
               </div>
             </div>
 
-            {/* Mandatory User Action Buttons: إيقاف مؤقت / إنهاء وحفظ / إلغاء الجلسة */}
-            <div className="pt-4 border-t border-slate-800 space-y-2.5">
-              <div className="text-[11px] text-slate-400 text-center mb-1">
-                سيتم تخزين الفيديو في مخزن الرصد الميداني واستدعاؤه لدى المدير العام ومدير النظام
-              </div>
-
-              {/* Pause / Resume Button */}
+            {/* Bottom Actions */}
+            <div className="pt-4 border-t border-slate-800 space-y-2">
               <button
                 type="button"
-                id="btn-dept-pause-resume"
-                onClick={() => setIsRecording(!isRecording)}
-                className={`w-full py-3 px-4 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
-                  isRecording
-                    ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40 shadow-amber-500/10'
-                    : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 shadow-emerald-500/10'
-                }`}
-              >
-                {isRecording ? (
-                  <>
-                    <Pause className="w-4 h-4 text-amber-400" />
-                    <span>إيقاف الجلسة مؤقتاً (Pause)</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 text-emerald-400" />
-                    <span>استئناف تسجيل الجلسة (Resume)</span>
-                  </>
-                )}
-              </button>
-
-              {/* Green Save & Finish Button */}
-              <button
-                type="button"
-                id="btn-dept-save-finish"
+                id="btn-save-camera-session"
                 onClick={handleFinishAndSave}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-xl shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <CheckCircle2 className="w-5 h-5 text-emerald-100" />
-                <span>إنهاء وحفظ الجلسة وتخزين الفيديو</span>
+                <Save className="w-4 h-4" />
+                <span>حفظ التوثيق وإغلاق الكاميرا نهائياً</span>
               </button>
 
-              {/* Red Cancel Button */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-200 border border-slate-700 hover:border-rose-500/30 text-xs font-medium transition-all cursor-pointer text-center"
+                >
+                  إلغاء وإغلاق الكاميرا
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-slate-900 border border-rose-500/40 rounded-3xl p-5 shadow-2xl text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h4 className="text-base font-bold text-white">إلغاء جلسة التوثيق وإغلاق الكاميرا؟</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              سيتم إيقاف مستشعر الكاميرا وإغلاق الجلسة فوراً دون حفظ أي صور أو ملاحظات جديدة.
+            </p>
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
-                id="btn-dept-cancel-session"
-                onClick={() => setShowCancelConfirm(true)}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-800/80 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                onClick={handleCancelSaving}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all cursor-pointer"
               >
-                <XCircle className="w-4 h-4 text-rose-400" />
-                <span>إلغاء الجلسة دون حفظ</span>
+                نعم، إغلاق وإلغاء
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(false)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-all cursor-pointer"
+              >
+                استمرار في التصوير
               </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Confirmation Modal for Cancel Saving */}
-        {showCancelConfirm && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn">
-            <div className="w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-2xl p-6 text-center shadow-2xl">
-              <div className="w-12 h-12 mx-auto rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-3">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <h4 className="text-base font-bold text-white mb-1">
-                تأكيد إلغاء حفظ الجلسة؟
-              </h4>
-              <p className="text-xs text-slate-400 mb-5 leading-relaxed">
-                هل أنت متأكد من إلغاء حفظ جلسة الرصد؟ سيتم إغلاق الكاميرا دون تخزين الفيديو في الأرشيف المركزي.
-              </p>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleCancelSaving}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all"
-                >
-                  نعم، إلغاء وعدم الحفظ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCancelConfirm(false)}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
-                >
-                  متابعة التسجيل
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
     </div>
   );
 };

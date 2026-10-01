@@ -20,6 +20,7 @@ import {
   Volume2,
   VolumeX,
   Plus,
+  Minus,
   Navigation,
   Satellite,
   Radio,
@@ -53,6 +54,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
   // Video and Stream States
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
@@ -60,6 +62,40 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
   const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
+
+  // Stop camera stream tracks completely and clear hardware access
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach(track => {
+          try { track.stop(); } catch (e) {}
+        });
+      } catch (e) {
+        console.warn('Error stopping camera track:', e);
+      }
+      streamRef.current = null;
+    }
+    if (stream) {
+      try {
+        stream.getTracks().forEach(track => {
+          try { track.stop(); } catch (e) {}
+        });
+      } catch (e) {}
+    }
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+        if (videoRef.current.srcObject) {
+          const s = videoRef.current.srcObject as MediaStream;
+          s.getTracks?.().forEach(t => { try { t.stop(); } catch (e) {} });
+          videoRef.current.srcObject = null;
+        }
+        videoRef.current.load();
+      } catch (e) {}
+    }
+    setStream(null);
+    setIsTorchOn(false);
+  }, [stream]);
 
   // New Camera Lifecycle & Session Switching States
   const [isCameraPaused, setIsCameraPaused] = useState<boolean>(false);
@@ -77,9 +113,22 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
     description?: string;
   } | null>(null);
 
+  // Keep fresh references for timer, async callbacks, and avoid re-renders
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const onUpdateSessionRef = useRef(onUpdateSession);
+  onUpdateSessionRef.current = onUpdateSession;
+
   // Timer and counter animation states
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(session ? session.durationSeconds : 0);
   const [lastAddedType, setLastAddedType] = useState<VehicleType | null>(null);
+
+  // Sync elapsedSeconds when active session changes
+  useEffect(() => {
+    if (session) {
+      setElapsedSeconds(session.durationSeconds || 0);
+    }
+  }, [session?.id]);
 
   // Live GPS tracking and auto coordinates capture
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number }>(() => 
@@ -108,12 +157,13 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
         setCurrentCoords(newCoords);
         setGpsAccuracy(accuracy);
 
-        let resolvedAddress = session?.resolvedAddress || '';
-        let district = session?.district || '';
-        let governorate = session?.governorate || 'القاهرة';
-        let roadType = session?.roadType || 'طريق رئيسي';
-        let locationName = session?.locationName || 'موقع الرصد الميداني';
-        let onlinePoiData = session?.onlinePoiData || '';
+        const currentSession = sessionRef.current;
+        let resolvedAddress = currentSession?.resolvedAddress || '';
+        let district = currentSession?.district || '';
+        let governorate = currentSession?.governorate || 'القاهرة';
+        let roadType = currentSession?.roadType || 'طريق رئيسي';
+        let locationName = currentSession?.locationName || 'موقع الرصد الميداني';
+        let onlinePoiData = currentSession?.onlinePoiData || '';
 
         try {
           // Query backend reverse geocoding with Egyptian geography fallback
@@ -142,9 +192,9 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
         setGpsSyncedNotice(`📍 تم تحديد الموقع تلقائياً: ${resolvedAddress || locationName} (${governorate} - ${district})`);
         setTimeout(() => setGpsSyncedNotice(null), 6000);
 
-        if (session) {
-          onUpdateSession({
-            ...session,
+        if (sessionRef.current) {
+          onUpdateSessionRef.current({
+            ...sessionRef.current,
             coordinates: newCoords,
             locationName,
             governorate,
@@ -154,7 +204,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
             onlinePoiData,
             autoLocationResolved: true,
             gpsAccuracyMeters: accuracy,
-            elevationMeters: alt ?? session.elevationMeters,
+            elevationMeters: alt ?? sessionRef.current.elevationMeters,
             autoGpsCaptured: true,
             gpsCaptureTimestamp: new Date().toISOString(),
           });
@@ -170,7 +220,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
       },
       { enableHighAccuracy: true, timeout: 12000 }
     );
-  }, [session, onUpdateSession]);
+  }, []);
 
   // Trigger auto-GPS immediately on mount or start of active session
   useEffect(() => {
@@ -183,9 +233,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
   const startCamera = useCallback(async (facing: 'environment' | 'user') => {
     try {
       setCameraError(null);
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("المتصفح أو بيئة العرض الحالية لا تدعم استدعاء الكاميرا مباشرة (تتطلب HTTPS أو تصريح كامل).");
@@ -222,6 +270,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
         throw new Error("تعذر إنشاء مجرى بث الكاميرا");
       }
 
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       setCameraError(null);
       setIsSimulatedRadar(false);
@@ -245,7 +294,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
       setCameraError(errMsg);
       setIsSimulatedRadar(true);
     }
-  }, [stream]);
+  }, [stopCamera]);
 
   // Handle switching camera
   const toggleFacingMode = () => {
@@ -256,8 +305,9 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
 
   // Handle Torch / Flashlight
   const toggleTorch = async () => {
-    if (!stream) return;
-    const videoTrack = stream.getVideoTracks()[0];
+    const currentStream = streamRef.current || stream;
+    if (!currentStream) return;
+    const videoTrack = currentStream.getVideoTracks()[0];
     if (videoTrack && hasTorch) {
       try {
         const nextTorch = !isTorchOn;
@@ -271,38 +321,54 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
     }
   };
 
-  // Mount camera on session active
+  // Mount camera on session active, stop completely when inactive or unmounted
   useEffect(() => {
     if (session && session.status === 'active') {
       startCamera(facingMode);
+    } else {
+      stopCamera();
     }
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
     };
-  }, [session?.id, session?.status]);
+  }, [session?.id, session?.status, startCamera, facingMode, stopCamera]);
+
+  // Unconditional unmount & window unload cleanup
+  useEffect(() => {
+    const handleUnload = () => {
+      stopCamera();
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    window.addEventListener('pagehide', handleUnload);
+
+    return () => {
+      stopCamera();
+      window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('pagehide', handleUnload);
+    };
+  }, [stopCamera]);
 
   // Session timer tick
   useEffect(() => {
     if (!session || session.status !== 'active') return;
 
+    let secondsCounter = session.durationSeconds || 0;
+
     const timer = setInterval(() => {
-      setElapsedSeconds(prev => {
-        const next = prev + 1;
-        if (next % 10 === 0) {
-          onUpdateSession({
-            ...session,
-            durationSeconds: next,
-          });
-        }
-        return next;
-      });
+      secondsCounter += 1;
+      setElapsedSeconds(secondsCounter);
+
+      if (secondsCounter % 10 === 0 && sessionRef.current) {
+        onUpdateSessionRef.current({
+          ...sessionRef.current,
+          durationSeconds: secondsCounter,
+        });
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [session, onUpdateSession]);
+  }, [session?.id, session?.status]);
 
   // Manual Vehicle Count Addition
   const handleAddVehicle = useCallback((type: VehicleType, method: 'manual_tap' | 'camera_ai' = 'manual_tap', confidence = 0.95, desc?: string) => {
@@ -343,6 +409,33 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
 
     onUpdateSession(updatedSession);
   }, [session, elapsedSeconds, isSoundEnabled, onUpdateSession]);
+
+  // Decrement Vehicle Count (في حالة التسجيل بالخطأ لتخفيض العدد)
+  const handleDecrementVehicle = (type: VehicleType, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!session) return;
+    const currentVal = session.counts[type] || 0;
+    if (currentVal <= 0) return;
+
+    const updatedCounts = {
+      ...session.counts,
+      [type]: currentVal - 1,
+    };
+
+    // Remove the latest detection matching this type
+    const detIndex = session.detections.findIndex(d => d.vehicleType === type);
+    const updatedDetections = detIndex >= 0 
+      ? session.detections.filter((_, idx) => idx !== detIndex)
+      : session.detections;
+
+    const updatedSession: MonitoringSession = {
+      ...session,
+      counts: updatedCounts,
+      detections: updatedDetections,
+    };
+
+    onUpdateSession(updatedSession);
+  };
 
   // Undo Last Count
   const handleUndoLast = () => {
@@ -474,26 +567,25 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
     ? Math.round((totalVehicles / elapsedSeconds) * 3600) 
     : totalVehicles;
 
-  // Toggle Camera Video Track (Pause/Resume camera sensor without stopping session)
+  // Toggle Camera Hardware Sensor (Physically pause/resume camera sensor without stopping session)
   const toggleCameraFeed = () => {
-    if (stream) {
-      const videoTracks = stream.getVideoTracks();
-      const nextPaused = !isCameraPaused;
-      videoTracks.forEach(track => {
-        track.enabled = !nextPaused;
-      });
-      setIsCameraPaused(nextPaused);
-      setSaveToast(nextPaused ? "تم إيقاف تشغيل عدسة الكاميرا مؤقتاً لحفظ الشحن." : "تم استئناف تشغيل الكاميرا.");
-      setTimeout(() => setSaveToast(null), 3000);
+    if (!isCameraPaused) {
+      // Pause: physically stop all camera tracks and clear hardware access
+      stopCamera();
+      setIsCameraPaused(true);
+      setSaveToast("تم إيقاف تشغيل عدسة الكاميرا تماماً وإطفاء المستشعر.");
+    } else {
+      // Resume: restart camera hardware
+      setIsCameraPaused(false);
+      startCamera(facingMode);
+      setSaveToast("تم استئناف تشغيل الكاميرا.");
     }
+    setTimeout(() => setSaveToast(null), 3000);
   };
 
   // Permanently close camera and save session data
   const handleStopCameraAndSave = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
+    stopCamera();
     if (session) {
       const updated: MonitoringSession = {
         ...session,
@@ -515,10 +607,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
         durationSeconds: elapsedSeconds,
       });
     }
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
+    stopCamera();
     setShowSwitchSessionModal(false);
     if (onSelectOtherSession) {
       onSelectOtherSession(targetSession);
@@ -729,9 +818,7 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
                 type="button"
                 id="btn-confirm-cancel-session"
                 onClick={() => {
-                  if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                  }
+                  stopCamera();
                   setShowCancelConfirm(false);
                   if (onCancelSession) {
                     onCancelSession();
@@ -1176,65 +1263,171 @@ export const CameraMonitoringSession: React.FC<CameraMonitoringSessionProps> = (
               </div>
             </div>
 
-            <p className="text-xs text-slate-400 mb-3">
-              اضغط على أي نوع لتسجيل عبور المركبة فوراً أمام الكاميرا (تدعم النقر السريع باللمس واختصارات لوحة المفاتيح 1 إلى 8):
-            </p>
+            {/* Header info with focus on 4 targets */}
+            <div className="p-2.5 mb-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs">
+              <span className="text-emerald-300 font-bold block mb-0.5">
+                🎯 التركيز على أهداف التحويل الاقتصادية (ملاكي • أجرة • ميكروباص • فان):
+              </span>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                استخدم أزرار <strong className="text-emerald-400 font-bold">(+)</strong> للزيادة وأزرار <strong className="text-rose-400 font-bold">(-)</strong> لتخفيض العدد عند الخطأ فوراً دون التأثير على عمل الكاميرا.
+              </p>
+            </div>
 
-            {/* The 8 Required Vehicle Classification Categories */}
-            <div className="grid grid-cols-1 gap-2 flex-1 max-h-[620px] overflow-y-auto pr-1 no-scrollbar">
-              {(['private', 'taxi', 'microbus', 'van', 'minibus', 'pickup', 'bus', 'motorcycle'] as VehicleType[]).map((typeKey) => {
-                const config = VEHICLE_TYPES[typeKey];
-                const count = session.counts[typeKey] || 0;
-                const isJustAdded = lastAddedType === typeKey;
+            {/* The Vehicle Classification Categories - Divided by CNG conversion priority */}
+            <div className="space-y-3 flex-1 max-h-[620px] overflow-y-auto pr-1 no-scrollbar">
+              
+              {/* Group 1: Primary Conversion Targets */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5 px-1">
+                  <span>أهداف التحويل الرئيسية ذات الجدوى العالية (4 فئات)</span>
+                  <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">الأولوية القصوى</span>
+                </span>
 
-                return (
-                  <button
-                    key={typeKey}
-                    id={`btn-tally-${typeKey}`}
-                    onClick={() => handleAddVehicle(typeKey, 'manual_tap')}
-                    className={`relative w-full p-2.5 sm:p-3 rounded-xl border text-right transition-all flex items-center justify-between gap-3 select-none active:scale-[0.98] cursor-pointer ${
-                      isJustAdded
-                        ? 'bg-emerald-500/30 border-emerald-400 scale-[1.02] shadow-lg shadow-emerald-500/20'
-                        : 'bg-slate-900/80 hover:bg-slate-700/50 border-slate-700 hover:border-slate-600'
-                    }`}
-                  >
-                    {/* Vehicle Info */}
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${config.badgeBg} ${config.badgeText} border ${config.borderColor}`}>
-                        {config.shortcutKey}
+                {(['private', 'taxi', 'microbus', 'van'] as VehicleType[]).map((typeKey) => {
+                  const config = VEHICLE_TYPES[typeKey];
+                  const count = session.counts[typeKey] || 0;
+                  const isJustAdded = lastAddedType === typeKey;
+
+                  return (
+                    <div
+                      key={typeKey}
+                      id={`card-tally-${typeKey}`}
+                      className={`relative w-full p-2.5 rounded-xl border text-right transition-all flex items-center justify-between gap-2.5 select-none ${
+                        isJustAdded
+                          ? 'bg-emerald-500/30 border-emerald-400 scale-[1.01] shadow-lg shadow-emerald-500/20'
+                          : 'bg-slate-900/90 border-slate-700/80 hover:border-emerald-500/40'
+                      }`}
+                    >
+                      {/* Vehicle Info */}
+                      <div 
+                        onClick={() => handleAddVehicle(typeKey, 'manual_tap')}
+                        className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+                        title="انقر لزيادة العدد"
+                      >
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${config.badgeBg} ${config.badgeText} border ${config.borderColor} shrink-0`}>
+                          {config.shortcutKey}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-bold text-white text-xs sm:text-sm truncate">
+                              {config.label}
+                            </h4>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              هدف تحويل
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                            {config.description}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-white text-sm sm:text-base">
-                            {config.label}
-                          </h4>
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${config.badgeBg} ${config.badgeText}`}>
-                            {config.cngSuitability === 'مرتفعة جداً' ? 'أولوية غاز قصوى' : config.subLabel}
+
+                      {/* Count Display & Increment / Decrement Buttons (+ / -) */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Decrement Button (-) */}
+                        <button
+                          type="button"
+                          id={`btn-dec-${typeKey}`}
+                          onClick={(e) => handleDecrementVehicle(typeKey, e)}
+                          disabled={count <= 0}
+                          className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-rose-900/60 disabled:opacity-30 disabled:hover:bg-slate-800 text-rose-300 border border-slate-700 hover:border-rose-500/40 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed"
+                          title="تخفيض العدد بمقدار 1 في حالة التسجيل بالخطأ"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Count */}
+                        <div className="text-center min-w-[36px]">
+                          <span className="text-lg sm:text-xl font-black text-white font-mono block leading-none">
+                            {count}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-mono">
+                            {totalVehicles > 0 ? `${Math.round((count / totalVehicles) * 100)}%` : '0%'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
-                          {config.description}
-                        </p>
+
+                        {/* Increment Button (+) */}
+                        <button
+                          type="button"
+                          id={`btn-inc-${typeKey}`}
+                          onClick={() => handleAddVehicle(typeKey, 'manual_tap')}
+                          className="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/50 flex items-center justify-center transition-all cursor-pointer shadow-md shadow-emerald-600/30 active:scale-95"
+                          title="زيادة العدد بمقدار 1 (+)"
+                        >
+                          <Plus className="w-4 h-4 font-bold" />
+                        </button>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    {/* Count Display & Tap Bubble */}
-                    <div className="flex items-center gap-2 pl-2">
-                      <div className="text-left">
-                        <span className="text-xl sm:text-2xl font-black text-white font-mono block leading-none">
+              {/* Group 2: Secondary / Heavy Vehicles (تكلفة تحويلها مرتفعة) */}
+              <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                <span className="text-[11px] font-semibold text-slate-400 flex items-center justify-between px-1">
+                  <span>فئات مركبات ثقيلة إضافية (تكلفة تحويلها مرتفعة)</span>
+                  <span className="text-[10px] text-slate-500">حافلات • نقل • شاحنات</span>
+                </span>
+
+                {(['minibus', 'pickup', 'bus', 'motorcycle'] as VehicleType[]).map((typeKey) => {
+                  const config = VEHICLE_TYPES[typeKey];
+                  const count = session.counts[typeKey] || 0;
+                  const isJustAdded = lastAddedType === typeKey;
+
+                  return (
+                    <div
+                      key={typeKey}
+                      id={`card-tally-${typeKey}`}
+                      className={`relative w-full p-2 rounded-xl border text-right transition-all flex items-center justify-between gap-2 select-none opacity-85 hover:opacity-100 ${
+                        isJustAdded
+                          ? 'bg-blue-500/20 border-blue-400'
+                          : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div 
+                        onClick={() => handleAddVehicle(typeKey, 'manual_tap')}
+                        className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+                        title="انقر لزيادة العدد"
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[11px] ${config.badgeBg} ${config.badgeText} border ${config.borderColor} shrink-0`}>
+                          {config.shortcutKey}
+                        </div>
+                        <span className="font-semibold text-xs text-slate-300 truncate">
+                          {config.label}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Decrement (-) */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleDecrementVehicle(typeKey, e)}
+                          disabled={count <= 0}
+                          className="w-7 h-7 rounded-md bg-slate-800 hover:bg-rose-900/40 disabled:opacity-20 text-rose-300 border border-slate-700 flex items-center justify-center cursor-pointer"
+                          title="تخفيض العدد (-)"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+
+                        <span className="font-mono font-bold text-sm text-white w-7 text-center">
                           {count}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {totalVehicles > 0 ? `${Math.round((count / totalVehicles) * 100)}%` : '0%'}
-                        </span>
-                      </div>
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                        <Plus className="w-4 h-4" />
+
+                        {/* Increment (+) */}
+                        <button
+                          type="button"
+                          onClick={() => handleAddVehicle(typeKey, 'manual_tap')}
+                          className="w-7 h-7 rounded-md bg-slate-700 hover:bg-emerald-600 text-white flex items-center justify-center cursor-pointer"
+                          title="زيادة العدد (+)"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                  </button>
-                );
-              })}
+                  );
+                })}
+              </div>
+
             </div>
 
             {/* Recent Live Detection Stream */}

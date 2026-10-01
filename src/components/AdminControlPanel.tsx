@@ -69,6 +69,7 @@ import { DepartmentCorrespondenceManager } from './DepartmentCorrespondenceManag
 import { AdminStaffManager } from './AdminStaffManager';
 import { AdminDropdownOptionsManager } from './AdminDropdownOptionsManager';
 import { AdminDepartmentsManager } from './AdminDepartmentsManager';
+import { AdminDepartmentPermissionsManager } from './AdminDepartmentPermissionsManager';
 import { Key, Film, History, LayoutDashboard, Mail, Users, ListFilter } from 'lucide-react';
 
 interface AdminControlPanelProps {
@@ -88,9 +89,9 @@ interface AdminControlPanelProps {
   onUpdateFields?: (fields: CustomFormField[]) => void;
   changeRequests?: FormChangeRequest[];
   onUpdateChangeRequests?: (requests: FormChangeRequest[]) => void;
-  onPreviewDepartment?: (dept: DepartmentRole) => void;
+  onPreviewDepartment?: (dept: DepartmentRole, previewUserType?: 'gm' | 'staff') => void;
   onNavigateToPortal?: () => void;
-  initialTab?: 'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive' | 'correspondence' | 'staff' | 'dropdowns' | 'departments';
+  initialTab?: 'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive' | 'correspondence' | 'staff' | 'dropdowns' | 'departments' | 'page_permissions';
   selectedFormBuilderDept?: DepartmentRole;
 }
 
@@ -117,7 +118,7 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
   selectedFormBuilderDept,
 }) => {
   // Active Panel Tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive' | 'correspondence' | 'staff' | 'dropdowns' | 'departments'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing' | 'contacts' | 'form_builder' | 'queries' | 'datamgmt' | 'analytics' | 'feasibility' | 'technical' | 'historical' | 'invitations' | 'passwords' | 'activity_logs' | 'video_archive' | 'correspondence' | 'staff' | 'dropdowns' | 'departments' | 'page_permissions'>(initialTab);
   const [currentFormBuilderDept, setCurrentFormBuilderDept] = useState<DepartmentRole>(selectedFormBuilderDept || 'operations');
 
   // Local draft states for easy editing and saving
@@ -698,6 +699,23 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
             </span>
           </button>
 
+          {/* Department Internal Pages Visibility & Permissions Tab */}
+          <button
+            id="tab-page-permissions"
+            onClick={() => setActiveTab('page_permissions')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'page_permissions'
+                ? 'bg-gradient-to-r from-indigo-600 to-emerald-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400/40'
+                : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>صلاحيات وصفحات الإدارات للأدوار</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+              إظهار وإخفاء الصفحات
+            </span>
+          </button>
+
           {/* Central Passwords & Direct Auth Tab */}
           <button
             id="tab-passwords"
@@ -928,14 +946,21 @@ export const AdminControlPanel: React.FC<AdminControlPanelProps> = ({
       {/* TAB: DEPARTMENTS CRUD & RENAMING MANAGEMENT                   */}
       {/* ============================================================== */}
       {activeTab === 'departments' && (
-        <AdminDepartmentsManager />
+        <AdminDepartmentsManager onPreviewDepartment={onPreviewDepartment} />
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB: DEPARTMENT INTERNAL PAGES VISIBILITY & ROLE PERMISSIONS   */}
+      {/* ============================================================== */}
+      {activeTab === 'page_permissions' && (
+        <AdminDepartmentPermissionsManager onPreviewDepartment={onPreviewDepartment} />
       )}
 
       {/* ============================================================== */}
       {/* TAB: PASSWORDS & ACCESS CONTROL (SUPER ADMIN & DEPARTMENTS)   */}
       {/* ============================================================== */}
       {activeTab === 'passwords' && (
-        <AdminPasswordsManager />
+        <AdminPasswordsManager onPreviewDepartment={onPreviewDepartment} />
       )}
 
       {/* ============================================================== */}

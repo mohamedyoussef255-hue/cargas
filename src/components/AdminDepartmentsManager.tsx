@@ -12,9 +12,14 @@ import {
   EyeOff,
   AlertTriangle,
   FolderPlus,
-  Sparkles
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
-import { CustomDepartmentConfig } from '../types';
+import { CustomDepartmentConfig, DepartmentRole } from '../types';
+
+interface AdminDepartmentsManagerProps {
+  onPreviewDepartment?: (dept: DepartmentRole) => void;
+}
 
 export const DEFAULT_DEPARTMENTS: CustomDepartmentConfig[] = [
   {
@@ -123,7 +128,9 @@ export const DEFAULT_DEPARTMENTS: CustomDepartmentConfig[] = [
   }
 ];
 
-export const AdminDepartmentsManager: React.FC = () => {
+export const AdminDepartmentsManager: React.FC<AdminDepartmentsManagerProps> = ({
+  onPreviewDepartment,
+}) => {
   const [departments, setDepartments] = useState<CustomDepartmentConfig[]>(() => {
     try {
       const stored = localStorage.getItem('cng_custom_departments_v1');
@@ -322,6 +329,17 @@ export const AdminDepartmentsManager: React.FC = () => {
                 </td>
                 <td className="py-3 px-4 text-center">
                   <div className="flex items-center justify-center gap-1.5">
+                    {onPreviewDepartment && (
+                      <button
+                        type="button"
+                        onClick={() => onPreviewDepartment(dept.key as DepartmentRole)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold cursor-pointer transition-all"
+                        title="دخول ومعاينة بيئة عمل الإدارة"
+                      >
+                        <ExternalLink className="w-3 h-3 text-emerald-400" />
+                        <span>دخول الإدارة</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => openEditDept(dept)}
                       className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer"

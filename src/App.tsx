@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header, ActiveTabType } from './components/Header';
 import { CameraMonitoringSession } from './components/CameraMonitoringSession';
 import { SessionsList } from './components/SessionsList';
@@ -53,8 +53,9 @@ export default function App() {
   const userNameParam = urlParams?.get('userName') || null;
   const isDirectLink = Boolean(roleParam && (roleParam === 'surveyor' || DEPARTMENTS_METADATA[roleParam]));
 
-  const [userType] = useState<'gm' | 'staff'>(userTypeParam);
+  const [userType, setUserType] = useState<'gm' | 'staff'>(userTypeParam);
   const [userName] = useState<string | null>(userNameParam);
+  const [previewUserType, setPreviewUserType] = useState<'gm' | 'staff'>('gm');
 
   // Department Role State (Null shows the Landing Portal)
   const [currentRole, setCurrentRole] = useState<DepartmentRole | null>(() => {
@@ -115,6 +116,7 @@ export default function App() {
   // Effective Role (Preview overrides current role for UI isolation)
   const effectiveRole = adminPreviewRole || currentRole;
   const isAdminPreview = Boolean(adminPreviewRole);
+  const effectiveUserType = isAdminPreview ? previewUserType : userType;
 
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<ActiveTabType>(() => {
@@ -229,6 +231,24 @@ export default function App() {
   const clientTokenFromUrl = urlParams?.get('client_token') || null;
   const clientNameFromUrl = urlParams?.get('client_name') || undefined;
   const clientPhoneFromUrl = urlParams?.get('client_phone') || undefined;
+
+  // Secret 5-Clicks Footer Admin Entry State
+  const [footerAdminClicks, setFooterAdminClicks] = useState<number>(0);
+  const footerClickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleFooterSecretClick = () => {
+    if (footerClickTimerRef.current) clearTimeout(footerClickTimerRef.current);
+    const next = footerAdminClicks + 1;
+    if (next >= 5) {
+      setFooterAdminClicks(0);
+      setIsAdminLoginModalOpen(true);
+    } else {
+      setFooterAdminClicks(next);
+      footerClickTimerRef.current = setTimeout(() => {
+        setFooterAdminClicks(0);
+      }, 3500);
+    }
+  };
 
   const [isClientPortalOpen, setIsClientPortalOpen] = useState<boolean>(() => Boolean(isLandownerSurveyAction));
   const [clientPortalTargetApp, setClientPortalTargetApp] = useState<LandownerApplication | null>(() => {
@@ -399,13 +419,21 @@ export default function App() {
               } else {
                 setIsAdminLoginModalOpen(true);
               }
+            } else if (isDeptAuthenticated(role)) {
+              setCurrentRole(role);
+              setActiveTab(DEPARTMENT_ROLE_SPECS[role]?.primaryTab || 'departments');
             } else {
-              if (isDeptAuthenticated(role)) {
-                setCurrentRole(role);
-                setActiveTab(DEPARTMENT_ROLE_SPECS[role]?.primaryTab || 'departments');
-              } else {
-                setDeptLoginRole(role);
-              }
+              setDeptLoginRole(role);
+            }
+          }}
+          onAdminQuickLoginDept={(role) => {
+            if (isAdminAuthenticated()) {
+              setDeptAuthenticated(role, true);
+              setAdminPreviewRole(role);
+              setCurrentRole(role);
+              setActiveTab(DEPARTMENT_ROLE_SPECS[role]?.primaryTab || 'departments');
+            } else {
+              setDeptLoginRole(role);
             }
           }}
           onOpenAdminLogin={() => {
@@ -444,8 +472,12 @@ export default function App() {
             isOpen={true}
             onClose={() => setDeptLoginRole(null)}
             department={deptLoginRole}
-            onSuccess={() => {
+            onSuccess={(isAdminOverride?: boolean) => {
               setDeptAuthenticated(deptLoginRole, true);
+              if (isAdminOverride) {
+                setAdminAuthenticated(true);
+                setAdminPreviewRole(deptLoginRole);
+              }
               setCurrentRole(deptLoginRole);
               setActiveTab(DEPARTMENT_ROLE_SPECS[deptLoginRole]?.primaryTab || 'departments');
               setDeptLoginRole(null);
@@ -492,6 +524,7 @@ export default function App() {
         currentRole={effectiveRole}
         onSwitchDepartment={() => {
           setAdminPreviewRole(null);
+          setCurrentRole(null);
           setActiveTab('portal');
         }}
         hotline={settings.general.hotline || '19544'}
@@ -511,8 +544,9 @@ export default function App() {
         onOpenTeamInvite={() => setIsTeamInviteModalOpen(true)}
         onOpenLandownerApplications={() => setIsLandownerModalOpen(true)}
         onOpenInAppNotifications={() => setIsInAppNotifCenterOpen(true)}
+        onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
         unreadInAppCount={unreadInAppCount}
-        userType={userType}
+        userType={effectiveUserType}
         userName={userName}
         isDirectLink={isDirectLink}
       />
@@ -527,18 +561,30 @@ export default function App() {
                 if (role === 'admin') {
                   setCurrentRole('admin');
                   setActiveTab('admin');
+                } else if (isDeptAuthenticated(role)) {
+                  setCurrentRole(role);
+                  setActiveTab(DEPARTMENT_ROLE_SPECS[role]?.primaryTab || 'departments');
                 } else {
-                  if (isDeptAuthenticated(role)) {
-                    setCurrentRole(role);
-                    setActiveTab(DEPARTMENT_ROLE_SPECS[role]?.primaryTab || 'departments');
-                  } else {
-                    setDeptLoginRole(role);
-                  }
+                  setDeptLoginRole(role);
+                }
+              }}
+              onAdminQuickLoginDept={(role) => {
+                if (isAdminAuthenticated()) {
+                  setDeptAuthenticated(role, true);
+                  setAdminPreviewRole(role);
+                  setCurrentRole(role);
+                  setActiveTab(DEPARTMENT_ROLE_SPECS[role]?.primaryTab || 'departments');
+                } else {
+                  setDeptLoginRole(role);
                 }
               }}
               onOpenAdminLogin={() => {
-                setCurrentRole('admin');
-                setActiveTab('admin');
+                if (isAdminAuthenticated()) {
+                  setCurrentRole('admin');
+                  setActiveTab('admin');
+                } else {
+                  setIsAdminLoginModalOpen(true);
+                }
               }}
               onOpenDeptLogin={(role) => {
                 if (isDeptAuthenticated(role)) {
@@ -645,6 +691,7 @@ export default function App() {
               /* If Current User is a specific Department or Super Admin in Live Preview: Show Isolated Department Workspace */
               <DepartmentWorkspaceView
                 department={effectiveRole || 'operations'}
+                userType={effectiveUserType}
                 sessions={sessions}
                 stations={stations}
                 activeSession={activeSession}
@@ -672,9 +719,11 @@ export default function App() {
                     setActiveTab('admin');
                   } else {
                     setCurrentRole(null);
+                    setActiveTab('portal');
                   }
                 }}
                 onOpenLandownerApplications={() => setIsLandownerModalOpen(true)}
+                isAdmin={isAdminAuthenticated() || Boolean(isAdminPreview)}
               />
             )}
           </div>
@@ -765,8 +814,9 @@ export default function App() {
             onUpdateFields={setCustomFields}
             changeRequests={changeRequests}
             onUpdateChangeRequests={setChangeRequests}
-            onPreviewDepartment={(dept) => {
+            onPreviewDepartment={(dept, roleType = 'gm') => {
               setAdminPreviewRole(dept);
+              setPreviewUserType(roleType);
               const targetSpec = DEPARTMENT_ROLE_SPECS[dept];
               setActiveTab(targetSpec?.primaryTab || 'departments');
             }}
@@ -840,11 +890,53 @@ export default function App() {
         currentDepartment={effectiveRole || undefined}
       />
 
-      {/* Footer / System status */}
+      {/* Department Password Login Modal (Global Mount) */}
+      {deptLoginRole && (
+        <DepartmentLoginModal
+          isOpen={true}
+          onClose={() => setDeptLoginRole(null)}
+          department={deptLoginRole}
+          onSuccess={(isAdminOverride?: boolean) => {
+            setDeptAuthenticated(deptLoginRole, true);
+            if (isAdminOverride) {
+              setAdminAuthenticated(true);
+              setAdminPreviewRole(deptLoginRole);
+            }
+            setCurrentRole(deptLoginRole);
+            setActiveTab(DEPARTMENT_ROLE_SPECS[deptLoginRole]?.primaryTab || 'departments');
+            setDeptLoginRole(null);
+          }}
+        />
+      )}
+
+      {/* Global Admin Login Modal (Accessible from any screen) */}
+      <AdminLoginModal
+        isOpen={isAdminLoginModalOpen}
+        onClose={() => setIsAdminLoginModalOpen(false)}
+        onSuccess={() => {
+          setAdminAuthenticated(true);
+          setCurrentRole('admin');
+          setActiveTab('admin');
+          setIsAdminLoginModalOpen(false);
+        }}
+      />
+
+      {/* Footer / System status with 5-clicks Secret Admin Entry */}
       <footer className="border-t border-slate-800/80 bg-slate-950/90 py-5 px-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <CargasNgvLogo size="sm" showText={true} subtitle="الشركة المصرية الدولية لتكنولوجيا الغاز • CARGAS" />
+            <div 
+              onClick={handleFooterSecretClick}
+              className="cursor-pointer select-none group"
+              title=""
+            >
+              <CargasNgvLogo size="sm" showText={true} subtitle="منظومة إدارة مشروعات ومحطات كارجاس • CARGAS NGV" />
+            </div>
+            {footerAdminClicks > 0 && footerAdminClicks < 5 && (
+              <span className="text-[10px] text-amber-400 font-mono animate-pulse">
+                ({5 - footerAdminClicks})
+              </span>
+            )}
           </div>
           <div className="text-center md:text-left flex flex-col items-center md:items-end gap-1">
             <div className="flex items-center gap-3 text-slate-300 font-medium">

@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Mail,
   UserCheck,
-  Phone
+  Phone,
+  ExternalLink
 } from 'lucide-react';
 import { DepartmentRole, DepartmentAccessCredentials, SuperAdminCredentials } from '../types';
 import { 
@@ -27,7 +28,13 @@ import {
 } from '../data/authCredentials';
 import { DEPARTMENTS_METADATA, DEPARTMENT_ROLE_SPECS } from '../data/departmentCustomFields';
 
-export const AdminPasswordsManager: React.FC = () => {
+interface AdminPasswordsManagerProps {
+  onPreviewDepartment?: (dept: DepartmentRole) => void;
+}
+
+export const AdminPasswordsManager: React.FC<AdminPasswordsManagerProps> = ({
+  onPreviewDepartment,
+}) => {
   // Super Admin state
   const [adminCreds, setAdminCreds] = useState<SuperAdminCredentials>(() => loadSuperAdminCredentials());
   const [adminPasswordInput, setAdminPasswordInput] = useState(adminCreds.password);
@@ -320,25 +327,38 @@ export const AdminPasswordsManager: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Actions: Send via WhatsApp & Copy Link */}
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCredentials(dept)}
-                    className="flex-1 py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{isCopied ? 'تم النسخ' : 'نسخ الرابط والرمز'}</span>
-                  </button>
+                {/* Actions: Direct Enter, Send via WhatsApp & Copy Link */}
+                <div className="pt-3 border-t border-slate-800/80 space-y-2">
+                  {onPreviewDepartment && (
+                    <button
+                      type="button"
+                      onClick={() => onPreviewDepartment(dept)}
+                      className="w-full py-2 px-3 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.01]"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>دخول وتفعيل بيئة عمل الإدارة (معاينة فورية)</span>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleSendWhatsAppToGM(dept)}
-                    className="flex-1 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>إرسال بالواتساب للمدير</span>
-                  </button>
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCredentials(dept)}
+                      className="flex-1 py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{isCopied ? 'تم النسخ' : 'نسخ الرابط والرمز'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendWhatsAppToGM(dept)}
+                      className="flex-1 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>إرسال بالواتساب للمدير</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
